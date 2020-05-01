@@ -1,65 +1,21 @@
-# project-artemis
+# Summary
 
-## Summary
-
-    Basically Warlight with an API allow Bots to play each other:
-        -> Player starts bot
-        -> Bot registers with the backend (with websocket)
-        -> Player starts game in Frontend/http request
-        -> Bot receives message from backend that websocket is available for game 
-        -> Bot sends/recieves moves and gamestates
-        -> ...
-        -> Game over
-        -> Bot is nottified and disconnects
-
-
-## 4 Components
-
-### Game Engine
 Language: GO
 
-    Game features:
-        Possible player moves:
-            - Deploy troops
-            - Move troops
+* Core functionality
+  * Provide communication to Engine for other components
+  * Websockets for bots
+    * parsing message
+    * validation
+    * relay to engine if needed
+  * Websocket for frontend
+    * Receive gamestate of each turn
+    * Send signal to advance one turn (if the game was configured no not autoplay)
+  * HTTP REST API for frontend
+    * starting new game
 
-    Core functionality:
-        - Start new game:
-            * Load initial game state from file
-        - Validate moves
-        - Execute player moves
-        - Return game results
-
-### Backend
-Language: GO
-
-    Core Functionality:
-        - Communicate with Game engine
-        - Websockets for bots:
-            * parsing message
-            * validation
-        - Websocket for frontend:
-            * Receive message from frontend:
-                * next turn              
-        - Minimal REST API:
-            * starting new game
-
-### Frontend
-Language: Angular
-
-    Core Functionality:
-        - View all connected bots
-        - View all ongoing games
-        - Start new game and select bots
-        - Send 'next turn' message
-        - Show currect game state (via graph library)
-
-### Demo bot
-Language: TBD
-
-  Core Functionality:
-    Very simple bot that:
-      * makes valid moves
-      * doesn't crash
-      * disconnects at end of game
-    
+* Links
+  1. Backend <=> Engine : HTTP (2 way communication)
+  2. Backend  <= Frontend : HTTP
+  3. Backend <=> Frontend : Websockets
+  4. Backend <=> Bot : Websockets
