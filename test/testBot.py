@@ -33,7 +33,7 @@ async def play(game_endpoint, access_key):
         next_move = json.dumps(
             {
             "accessKey": access_key,
-            "moveJson": "{}"
+            "move": "{}"
             }
         )
 

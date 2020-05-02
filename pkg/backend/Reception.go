@@ -9,7 +9,10 @@ import (
 	guuid "github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
+	"github.com/Project-Wartemis/pw-backend/pkg/validation"
 )
+
+var validator *validation.Validator = validation.NewValidator()
 
 type Reception struct {
 	RegisteredBots map[string]*Bot
@@ -24,6 +27,8 @@ func newReception() *Reception {
 	r.GameEngines = LoadGameEngines()
 	http.HandleFunc("/register", r.ListenBotRegister)
 	logrus.Info("Listening at /register for new bots")
+
+
 	return r
 }
 
@@ -49,7 +54,6 @@ func (recep *Reception) ListenBotRegister(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		// Could not read/parse message
 		logrus.Errorf("Failed to register bot: %s", err)
-		_ = bot.SendMessage("Failed to parse registration request")
 		return
 	}
 
@@ -85,6 +89,10 @@ func (recep *Reception) ReadAndParseRegistration(ws *websocket.Conn) (*Bot, erro
 	if err != nil {
 		logrus.Errorf("Error reading websocket: %s", err)
 		return nil, err
+	}
+
+	if !validator.ValidateBytes(message, validation.BOT_REGISTER) {
+		return nil, errors.New("Json is not compliant with schema")
 	}
 
 	botBuffer := Bot{

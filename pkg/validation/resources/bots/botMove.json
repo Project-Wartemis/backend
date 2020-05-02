@@ -1,0 +1,15 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+      "accessKey": {
+        "type": "string",
+        "description": "Unique access key granted by backend upon registration"
+      },
+      "move": {
+        "type": "object",
+        "description": "The move of the bot. Validity will be checked by GameEngine"
+      }
+    },
+    "additionalProperties": false
+  }

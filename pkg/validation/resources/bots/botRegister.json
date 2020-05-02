@@ -1,0 +1,11 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+      "botName": {
+        "type": "string",
+        "description": "A unique name for the bot that will be visible to others"
+      }
+    },
+    "additionalProperties": false
+  }

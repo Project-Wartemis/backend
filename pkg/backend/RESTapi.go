@@ -2,10 +2,13 @@ package communication
 
 import (
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
+	"errors"
 	"fmt"
 
 	"github.com/sirupsen/logrus"
+	"github.com/Project-Wartemis/pw-backend/pkg/validation"
 )
 
 // ------------------------------------
@@ -48,6 +51,7 @@ type postNewGameHandler struct {
 	Reception *Reception
 }
 
+// Request schema
 type NewGameRequest struct {
 	Bots []string
 	GameEngineName string
@@ -58,10 +62,21 @@ func (h *postNewGameHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Forbidden(w)
 		return
 	}
+	defer r.Body.Close()
 
-	decoder := json.NewDecoder(r.Body)
+	bytes, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		BadRequest(w, err)
+		return
+	}
+	// Validate body
+	if !validator.ValidateBytes(bytes, validation.NEW_GAME_REQUEST) {
+		BadRequest(w, errors.New("Json is not compliant with schema"))
+		return
+	}
+
 	ngr := NewGameRequest{}
-	err := decoder.Decode(&ngr)
+	err = json.Unmarshal(bytes, &ngr)
 	if err != nil {
 		BadRequest(w, err)
 		return
@@ -72,6 +87,7 @@ func (h *postNewGameHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		InternalServerError(w, "Could not reach GameEngine", err)
 		return
 	}
+	Accepted(w)
 }
 
 // ------------------------------------
@@ -93,6 +109,11 @@ func startRestApi(recep *Reception) {
 // ------------------------------------
 // Default replies
 // ------------------------------------
+func Accepted(w http.ResponseWriter) {
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"message": "Accepted"}`))
+}
+
 func Forbidden(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusForbidden)
 	w.Write([]byte(`{"message": "Forbidden"}`))
@@ -100,12 +121,12 @@ func Forbidden(w http.ResponseWriter) {
 
 func BadRequest(w http.ResponseWriter, err error) {
 	w.WriteHeader(http.StatusBadRequest)
-	w.Write([]byte(fmt.Sprintf(`{"message": "BadRequest", "error": "%s"}`, err)))
-	logrus.Errorf("Could not read body: %s", err)
+	w.Write([]byte(fmt.Sprintf(`{"message": "%s"}`, err)))
+	logrus.Errorf("Problem with incomming request: %s", err)
 }
 
 func InternalServerError(w http.ResponseWriter, message string, err error) {
 	w.WriteHeader(http.StatusBadRequest)
-	w.Write([]byte(fmt.Sprintf(`{"message": "%s", "error": "%s"}`, message, err)))
+	w.Write([]byte(fmt.Sprintf(`{"message": "%s: %s"}`, message, err)))
 	logrus.Errorf("%s: %s", message, err)
 }

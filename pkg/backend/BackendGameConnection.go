@@ -3,14 +3,16 @@ package communication
 import (
 	"encoding/json"
 	"net/http"
+	"errors"
 
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
+	"github.com/Project-Wartemis/pw-backend/pkg/validation"
 )
 
 type BotMove struct {
 	AccessKey string
-	MoveJson  string
+	Move  string
 }
 
 type BackendGameConnection struct {
@@ -50,6 +52,7 @@ func (g *BackendGameConnection) ListenBotMove(w http.ResponseWriter, r *http.Req
 	}
 	logrus.Infof("recieved move from bot %s", botMove.AccessKey)
 
+	//TODO send move to GameEngine
 }
 
 func (g *BackendGameConnection) readAndParseBotMove(ws *websocket.Conn) (*BotMove, error) {
@@ -57,6 +60,10 @@ func (g *BackendGameConnection) readAndParseBotMove(ws *websocket.Conn) (*BotMov
 	if err != nil {
 		logrus.Errorf("read: %s", err)
 		return nil, err
+	}
+
+	if !validator.ValidateBytes(message, validation.NEW_GAME_REQUEST) {
+		return nil, errors.New("Json is not compliant with schema")
 	}
 
 	// Parse json
