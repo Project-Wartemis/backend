@@ -1,4 +1,4 @@
-package communication
+package backend
 
 import (
 	"github.com/gorilla/websocket"
