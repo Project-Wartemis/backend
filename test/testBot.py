@@ -7,7 +7,7 @@ import asyncio
 import websockets
 
 async def register():
-    uri = "ws://localhost:8080/register"
+    uri = "ws://localhost:80/register"
     async with websockets.connect(uri) as websocket:
         name = {
             "botName": "QBot"
@@ -28,7 +28,7 @@ async def register():
         await play(game_endpoint, access_key)
 
 async def play(game_endpoint, access_key):
-    uri = "ws://localhost:8080" + game_endpoint
+    uri = "ws://localhost:80" + game_endpoint
     async with websockets.connect(uri) as websocket:
         next_move = json.dumps(
             {

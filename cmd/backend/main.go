@@ -1,18 +1,39 @@
 package main
 
 import (
-	"flag"
-	"log"
-
-	"github.com/Project-Wartemis/pw-backend/pkg/backend"
+	"os"
+	log "github.com/sirupsen/logrus"
+	"github.com/Project-Wartemis/pw-backend/internal/master"
+	"github.com/Project-Wartemis/pw-backend/internal/wrapper"
 )
 
-var addr = flag.String("addr", "0.0.0.0:8080", "http service address")
-
 func main() {
-	flag.Parse()
-	log.SetFlags(0)
-	log.Println("Execute main")
+	LOG_LEVEL, PORT := getSettings()
 
-	communication.RunBackend(addr)
+	log.SetLevel(LOG_LEVEL)
+
+	log.Info("Execute main")
+
+	clientManagerWrapper := wrapper.NewLobbyWrapper()
+
+	router := master.NewRouter()
+	router.Initialise(clientManagerWrapper)
+
+	router.Start(PORT)
+}
+
+func getSettings() (LOG_LEVEL log.Level, PORT int) {
+	switch os.Getenv("WARTEMIS_ENV") {
+		case "PROD":
+			LOG_LEVEL = log.InfoLevel
+			PORT = 80
+		case "TEST":
+			LOG_LEVEL = log.InfoLevel
+			PORT = 80
+		default:
+			// LOG_LEVEL = log.DebugLevel
+			LOG_LEVEL = log.InfoLevel
+			PORT = 8080
+	}
+	return
 }
