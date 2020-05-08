@@ -14,10 +14,11 @@ func main() {
 
 	log.Info("Execute main")
 
-	clientManagerWrapper := wrapper.NewLobbyWrapper()
+	lobbyWrapper := wrapper.NewLobbyWrapper()
+	roomWrapper := wrapper.NewRoomWrapper()
 
 	router := master.NewRouter()
-	router.Initialise(clientManagerWrapper)
+	router.Initialise(lobbyWrapper, roomWrapper)
 
 	router.Start(PORT)
 }

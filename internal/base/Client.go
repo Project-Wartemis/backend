@@ -9,9 +9,9 @@ import (
 )
 
 type Client struct {
-	Name string
-	IsBot bool `json:"-"`
-	Key string `json:"-"`
+	Name string `json:"name"`
+	Key string  `json:"key"`
+	IsBot bool  `json:"-"`
 	connection *websocket.Conn
 }
 

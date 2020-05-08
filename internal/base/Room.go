@@ -1,19 +1,34 @@
 package base
 
 import (
+	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 )
 
 type Room struct {
-	Name string
-	Clients []*Client
+	Name string       `json:"name"`
+	Key string  `json:"key"`
+	Clients []*Client `json:"clients"`
 	clientsByKey map[string]*Client
-	clientsByName map[string]*Client
+}
+
+func NewRoom() *Room {
+	return &Room {
+		Name: "",
+		Key: uuid.New().String(),
+		Clients: []*Client{},
+		clientsByKey: map[string]*Client{},
+	}
+}
+
+func (this *Room) GetClientByKey(key string) *Client {
+	return this.clientsByKey[key]
 }
 
 func (this *Room) AddClient(client *Client) {
 	this.Clients = append(this.Clients, client)
-	log.Info("Added client to room [%s]", this.Name)
+	this.clientsByKey[client.Key] = client
+	log.Infof("Added client [%s] to room [%s]", client.Name, this.Name)
 }
 
 func (this *Room) RemoveClient(client *Client) {

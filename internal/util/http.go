@@ -10,16 +10,16 @@ import (
 
 var upgrader = websocket.Upgrader{} // use default options
 
-func InternalServerError(writer http.ResponseWriter, message string, err error) {
-	log.Errorf("%s: %s", message, err)
-	writer.WriteHeader(http.StatusBadRequest)
-	writer.Write([]byte(fmt.Sprintf(`{"message": "%s: %s"}`, message, err)))
+func WriteStatus(writer http.ResponseWriter, status int, message string, errors ...error) {
+	log.Warnf("%s: %s", message, errors)
+	writer.WriteHeader(status)
+	writer.Write([]byte(fmt.Sprintf(`{"message": "%s", "errors": [%s]}`, message, errors)))
 }
 
 func WriteJson(writer http.ResponseWriter, value interface{}) {
 	json, err := json.Marshal(value)
 	if err != nil {
-		InternalServerError(writer, "Error parsing object to json", err)
+		WriteStatus(writer, http.StatusBadRequest, "Error parsing object to json", err)
 	}
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusOK)

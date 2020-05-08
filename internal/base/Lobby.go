@@ -8,7 +8,8 @@ import (
 
 type Lobby struct {
 	Room
-	Rooms []*Room
+	Rooms []*Room `json:"rooms"`
+	roomsByKey map[string]*Room
 }
 
 var (
@@ -24,17 +25,26 @@ func GetLobby() *Lobby {
 		return lobby
 	}
 
-	room := &Room {
-		Clients: []*Client{},
-		clientsByKey: make(map[string]*Client),
-		clientsByName: make(map[string]*Client),
-	}
+	room := NewRoom()
 	lobby = &Lobby {
 		Room: *room,
 		Rooms: []*Room{},
+		roomsByKey: map[string]*Room{},
 	}
 
 	return lobby
+}
+
+func (this *Lobby) GetRoomByKey(key string) *Room {
+	return this.roomsByKey[key]
+}
+
+func (this *Lobby) AddRoom(room *Room) *Room {
+	result := NewRoom()
+	result.Name = room.Name
+	this.Rooms = append(this.Rooms, result)
+	this.roomsByKey[result.Key] = result
+	return result
 }
 
 func (this *Lobby) CreateAndAddClient() *Client {
@@ -47,15 +57,11 @@ func (this *Lobby) Register(client *Client, name string, key string) error {
 	if _, found := this.clientsByKey[key]; found {
 		return errors.New("key already registered")
 	}
-	if _, found := this.clientsByName[name]; found {
-		return errors.New("name already registered")
-	}
 
 	client.Name = name
 	client.IsBot = true
 	client.Key = key
 	this.clientsByKey[key] = client
-	this.clientsByName[name] = client
 
 	log.Infof("client [%s] registered with key [%s]", name, key)
 	return nil
