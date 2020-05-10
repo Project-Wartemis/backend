@@ -9,7 +9,6 @@ on:
 defaults:
   run:
     shell: bash
-    working-directory: angular
 
 env:
   GO_VERSION: 1.14
