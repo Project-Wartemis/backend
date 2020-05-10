@@ -22,8 +22,8 @@ func NewRouter() *Router {
 func (this *Router) Start(port int) {
 	endpoint := fmt.Sprintf("0.0.0.0:%d", port)
 	address := flag.String("addr", endpoint, "http service address")
+	log.Infof("Starting http listener on port %d", port)
 	err := http.ListenAndServe(*address, this.router)
-	log.Infof("Started http listeren on port %s", port)
 	if err != nil {
 		log.Error("Could not start http listener")
 		log.Panic(err)
