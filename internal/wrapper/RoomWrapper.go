@@ -15,7 +15,7 @@ func NewRoomWrapper() *RoomWrapper {
 	return &RoomWrapper {}
 }
 
-func (this *RoomWrapper) AddClientToRoom(writer http.ResponseWriter, request *http.Request) {
+func (this *RoomWrapper) AddClient(writer http.ResponseWriter, request *http.Request) {
 	roomKey := mux.Vars(request)["room"]
 	room := base.GetLobby().GetRoomByKey(roomKey)
 	if room == nil {
@@ -37,4 +37,6 @@ func (this *RoomWrapper) AddClientToRoom(writer http.ResponseWriter, request *ht
 	}
 
 	room.AddClient(client)
+
+	util.WriteJson(writer, client)
 }

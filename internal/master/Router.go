@@ -32,7 +32,7 @@ func (this *Router) Start(port int) {
 func (this *Router) Initialise(lobby *wrapper.LobbyWrapper, room *wrapper.RoomWrapper) {
 	this.router.HandleFunc("/lobby", lobby.GetLobby).Methods("GET");
 	this.router.HandleFunc("/room", lobby.NewRoom).Methods("POST");
-	this.router.HandleFunc("/room/{room}/client", room.AddClientToRoom).Methods("POST");
+	this.router.HandleFunc("/room/{room}/client", room.AddClient).Methods("POST");
 	this.router.HandleFunc("/socket", lobby.NewConnection);
 	this.router.HandleFunc("/*", NotFoundHandler);
 }

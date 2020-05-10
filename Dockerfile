@@ -1,4 +1,4 @@
-FROM golang:1.14.2
+FROM golang:alpine
 
 WORKDIR /go/src/github.com/Project-Wartemis/pw-backend
 
