@@ -1,7 +1,14 @@
 const ws = require('websocket').client;
 const uuid = require('uuid');
 
+//const URL = 'ws://localhost:8080/socket';
+const URL = 'ws://www.artemis.com/api/socket';
+
 let socket = new ws();
+
+socket.on('connectFailed', function(error) {
+  console.log('Connect Error: ' + error.toString());
+});
 
 socket.on('connect', connection => {
   console.log('connected!');
@@ -21,7 +28,7 @@ socket.on('connect', connection => {
   sendGamestate(connection);
 });
 
-socket.connect('ws://localhost:8080/socket');
+socket.connect(URL);
 
 function sendMessage(connection, message) {
   connection.sendUTF(JSON.stringify(message));
