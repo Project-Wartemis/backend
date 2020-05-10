@@ -32,8 +32,6 @@ jobs:
 
     - name: Build
       run: go build -o ./backend ./cmd/backend
-      env:
-        WARTEMIS_ENV: BUILD
 
     - name: Docker
       uses: elgohr/Publish-Docker-Github-Action@master
