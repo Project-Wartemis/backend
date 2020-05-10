@@ -2,7 +2,7 @@ const ws = require('websocket').client;
 const uuid = require('uuid');
 
 //const URL = 'ws://localhost:8080/socket';
-const URL = 'ws://www.artemis.com/api/socket';
+const URL = 'https://api.wartemis.com/api/socket';
 
 let socket = new ws();
 

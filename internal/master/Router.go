@@ -31,10 +31,10 @@ func (this *Router) Start(port int) {
 }
 
 func (this *Router) Initialise(lobby *wrapper.LobbyWrapper, room *wrapper.RoomWrapper) {
-	this.router.HandleFunc("/api/lobby", lobby.GetLobby).Methods("GET");
-	this.router.HandleFunc("/api/room", lobby.NewRoom).Methods("POST");
-	this.router.HandleFunc("/api/room/{room}/client", room.AddClient).Methods("POST");
-	this.router.HandleFunc("/api/socket", lobby.NewConnection);
+	this.router.HandleFunc("/lobby", lobby.GetLobby).Methods("GET");
+	this.router.HandleFunc("/room", lobby.NewRoom).Methods("POST");
+	this.router.HandleFunc("/room/{room}/client", room.AddClient).Methods("POST");
+	this.router.HandleFunc("/socket", lobby.NewConnection);
 	this.router.HandleFunc("/*", NotFoundHandler);
 }
 
