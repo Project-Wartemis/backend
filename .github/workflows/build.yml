@@ -1,0 +1,44 @@
+name: build
+
+on:
+  push:
+    branches:
+    - master
+    - development
+
+defaults:
+  run:
+    shell: bash
+    working-directory: angular
+
+env:
+  GO_VERSION: 1.14
+
+jobs:
+  build:
+    runs-on: self-hosted
+    steps:
+
+    - name: Extract branch name
+      id: extract_branch
+      run: echo ::set-env name=BRANCH::$(echo ${GITHUB_REF#refs/heads/})
+
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Use Go
+      uses: actions/setup-go@v1
+      with:
+        go-version: ${{env.GO_VERSION}}
+
+    - name: Build
+      run: go build -o ./backend ./cmd/backend
+
+    - name: Docker
+      uses: elgohr/Publish-Docker-Github-Action@master
+      with:
+        name: wartemis/backend
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_PASSWORD }}
+        snapshot: true
+        tags: "${{ env.BRANCH }}"

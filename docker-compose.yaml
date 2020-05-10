@@ -1,0 +1,8 @@
+version: "3"
+services:
+  backend:
+    image: pw/backend
+    build: .
+    container_name: pw-backend
+    ports:
+      - "8080:8080"
