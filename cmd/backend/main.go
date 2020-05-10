@@ -25,10 +25,7 @@ func main() {
 
 func getSettings() (LOG_LEVEL log.Level, PORT int) {
 	switch os.Getenv("WARTEMIS_ENV") {
-		case "PROD":
-			LOG_LEVEL = log.InfoLevel
-			PORT = 80
-		case "TEST":
+		case "BUILD":
 			LOG_LEVEL = log.InfoLevel
 			PORT = 80
 		default:
