@@ -34,6 +34,7 @@ func (this *Router) Initialise(lobby *wrapper.LobbyWrapper, room *wrapper.RoomWr
 	this.router.HandleFunc("/lobby", lobby.GetLobby).Methods("GET");
 	this.router.HandleFunc("/room", lobby.NewRoom).Methods("POST");
 	this.router.HandleFunc("/room/{room}/client", room.AddClient).Methods("POST");
+	this.router.HandleFunc("/socket/{room}", room.NewConnection);
 	this.router.HandleFunc("/socket", lobby.NewConnection);
 	this.router.HandleFunc("/*", NotFoundHandler);
 }

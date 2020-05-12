@@ -3,32 +3,38 @@ const uuid = require('uuid');
 
 const URL = 'https://localhost:8080/socket';
 //const URL = 'https://api.wartemis.com/socket';
+const KEY = uuid.v4();
 
-let socket = new ws();
+function start() {
+  setupNewSocket(URL);
+}
 
-socket.on('connectFailed', function(error) {
-  console.log('Connect Error: ' + error.toString());
-});
+function setupNewSocket(endpoint) {
+  let socket = new ws();
 
-socket.on('connect', connection => {
-  console.log('connected!');
-
-  connection.on('error', error => {
-    console.log('error: ' + error);
+  socket.on('connectFailed', function(error) {
+    console.error('Connect Error: ' + error.toString());
   });
 
-  connection.on('close', () => {
-    console.log('closed');
+  socket.on('connect', connection => {
+    console.log('connected!');
+
+    connection.on('error', error => {
+      console.log('error: ' + error);
+    });
+
+    connection.on('close', () => {
+      console.log('closed');
+    });
+
+    connection.on('message', handleMessage.bind(undefined, connection));
+
+    register(connection);
   });
 
-  connection.on('message', handleMessage);
-
-  register(connection)
-  //sendRandomEcho(connection);
-  sendGamestate(connection);
-});
-
-socket.connect(URL);
+  console.log(`connecting to socket @ ${endpoint}`);
+  socket.connect(endpoint);
+}
 
 function sendMessage(connection, message) {
   connection.sendUTF(JSON.stringify(message));
@@ -38,7 +44,7 @@ function register(connection) {
   sendMessage(connection, {
     type: 'register',
     name: 'Robbot',
-    key: uuid.v4()
+    key: KEY
   });
 }
 
@@ -52,25 +58,22 @@ function sendRandomEcho(connection) {
   setTimeout(sendRandomEcho, 1000, connection);
 }
 
-let turn = 0
-function sendGamestate(connection) {
-  if(!connection.connected)
-    return;
-  sendMessage(connection, {
-    type: 'gamestate',
-    payload: {
-      players: ['me', 'myself', 'i'],
-      turn: turn++,
-      stuff: {
-        random: 'text'
-      }
-    }
-  });
-  setTimeout(sendGamestate, 3000, connection);
+function handleMessage(connection, message) {
+  if(message.type !== 'utf8')
+    console.log('Got a non-text message, ignoring');
+  message = JSON.parse(message.utf8Data);
+
+  console.log('Got a message!');
+  console.log(JSON.stringify(message));
+
+  switch(message.type) {
+    case 'game': handleGameMessage(connection, message); break;
+  }
 }
 
-function handleMessage(message) {
-  if(message.type !== 'utf8')
-    return;
-  console.log(JSON.stringify(message.utf8Data))
+function handleGameMessage(connection, message) {
+  console.log('handled');
+  setupNewSocket(URL + '/' + message.key);
 }
+
+start();

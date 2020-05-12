@@ -1,9 +1,7 @@
 package base
 
 import (
-	"errors"
 	"sync"
-	log "github.com/sirupsen/logrus"
 )
 
 type Lobby struct {
@@ -25,7 +23,7 @@ func GetLobby() *Lobby {
 		return lobby
 	}
 
-	room := NewRoom()
+	room := NewRoom("Lobby")
 	lobby = &Lobby {
 		Room: *room,
 		Rooms: []*Room{},
@@ -40,29 +38,8 @@ func (this *Lobby) GetRoomByKey(key string) *Room {
 }
 
 func (this *Lobby) AddRoom(room *Room) *Room {
-	result := NewRoom()
-	result.Name = room.Name
+	result := NewRoom(room.Name)
 	this.Rooms = append(this.Rooms, result)
 	this.roomsByKey[result.Key] = result
 	return result
-}
-
-func (this *Lobby) CreateAndAddClient() *Client {
-	client := NewClient()
-	this.AddClient(client)
-	return client
-}
-
-func (this *Lobby) Register(client *Client, name string, key string) error {
-	if _, found := this.clientsByKey[key]; found {
-		return errors.New("key already registered")
-	}
-
-	client.Name = name
-	client.IsBot = true
-	client.Key = key
-	this.clientsByKey[key] = client
-
-	log.Infof("client [%s] registered with key [%s]", name, key)
-	return nil
 }

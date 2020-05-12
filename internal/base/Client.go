@@ -11,12 +11,15 @@ import (
 type Client struct {
 	Name string `json:"name"`
 	Key string  `json:"key"`
-	IsBot bool  `json:"-"`
+	IsBot bool  `json:"isBot"`
+	Room *Room  `json:"-"`
 	connection *websocket.Conn
 }
 
-func NewClient() *Client {
-	return &Client {}
+func NewClient(room *Room) *Client {
+	return &Client {
+		Room: room,
+	}
 }
 
 func (this *Client) SetConnection(connection *websocket.Conn) {
@@ -82,7 +85,7 @@ func (this *Client) handleEchoMessage(raw []byte) {
 
 func (this *Client) handleRegisterMessage(raw []byte) {
 	message := message.ParseRegisterMessage(raw)
-	err := GetLobby().Register(this, message.Name, message.Key)
+	err := this.Room.Register(this, message.Name, message.Key)
 	if err != nil {
 		log.Warn("Could not register")
 		this.SendError(fmt.Sprintf("Could not register: [%s]", err))
