@@ -7,10 +7,14 @@ import (
 	"github.com/Project-Wartemis/pw-backend/internal/util"
 )
 
-type LobbyWrapper struct {}
+type LobbyWrapper struct {
+	roomWrapper *RoomWrapper
+}
 
-func NewLobbyWrapper() *LobbyWrapper {
-	return &LobbyWrapper {}
+func NewLobbyWrapper(roomWrapper *RoomWrapper) *LobbyWrapper {
+	return &LobbyWrapper {
+		roomWrapper: roomWrapper,
+	}
 }
 
 func (this *LobbyWrapper) GetLobby(writer http.ResponseWriter, request *http.Request) {
@@ -18,10 +22,7 @@ func (this *LobbyWrapper) GetLobby(writer http.ResponseWriter, request *http.Req
 }
 
 func (this *LobbyWrapper) NewConnection(writer http.ResponseWriter, request *http.Request) {
-	client := base.GetLobby().CreateAndAddClient()
-	defer base.GetLobby().RemoveClient(client)
-
-	util.SetupWebSocket(writer, request, client.SetConnection, client.HandleMessage)
+	this.roomWrapper.newConnection(&(base.GetLobby().Room), writer, request)
 }
 
 func (this *LobbyWrapper) NewRoom(writer http.ResponseWriter, request *http.Request) {

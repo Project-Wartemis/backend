@@ -23,7 +23,7 @@ func GetLobby() *Lobby {
 		return lobby
 	}
 
-	room := NewRoom("Lobby")
+	room := NewRoom("lobby")
 	lobby = &Lobby {
 		Room: *room,
 		Rooms: []*Room{},

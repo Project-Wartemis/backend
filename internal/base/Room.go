@@ -7,10 +7,9 @@ import (
 )
 
 type Room struct {
-	Name string          `json:"name"`
-	Key string           `json:"key"`
-	Bots []*Client       `json:"bots"`
-	Spectators []*Client `json:"spectators"`
+	Name string                `json:"name"`
+	Key string                 `json:"key"`
+	Clients map[string][]*Client `json:"clients"`
 	clientsByKey map[string]*Client
 }
 
@@ -18,8 +17,7 @@ func NewRoom(name string) *Room {
 	return &Room {
 		Name: name,
 		Key: uuid.New().String(),
-		Bots: []*Client{},
-		Spectators: []*Client{},
+		Clients: map[string][]*Client{},
 		clientsByKey: map[string]*Client{},
 	}
 }
@@ -30,27 +28,43 @@ func (this *Room) GetClientByKey(key string) *Client {
 
 func (this *Room) CreateAndAddClient() *Client {
 	client := NewClient(this)
-	this.Spectators = append(this.Spectators, client)
-	log.Infof("Added client [%s] to room [%s]", client.Name, this.Name)
+	log.Infof("Added a new client to room [%s]", this.Name)
 	return client
 }
 
-func (this *Room) RemoveClient(client *Client) {
-	this.removeClientFromList(client, &this.Bots)
-	this.removeClientFromList(client, &this.Spectators)
-	delete(this.clientsByKey, client.Key)
-	log.Infof("Removed client [%s] from room [%s]", client.Name, this.Name)
+func (this *Room) AddClient(client *Client) error {
+	if client.Key != "" {
+		if _, found := this.clientsByKey[client.Key]; found {
+			return errors.New("key already registered")
+		}
+		this.clientsByKey[client.Key] = client
+	}
+	if client.Type != "" {
+		this.Clients[client.Type] = append(this.Clients[client.Type], client)
+	}
+	return nil
 }
 
-func (this *Room) removeClientFromList(client *Client, list *[]*Client) {
-	for i,c := range *list {
+func (this *Room) RemoveClient(client *Client) {
+	if client.Key != "" {
+		delete(this.clientsByKey, client.Key)
+		log.Infof("Removing client [%s] from room [%s]", client.Name, this.Name)
+	}
+	if client.Type != "" {
+		this.Clients[client.Type] = this.removeClientFromList(client, this.Clients[client.Type])
+	}
+}
+
+func (this *Room) removeClientFromList(client *Client, list []*Client) []*Client {
+	for i,c := range list {
 		if c != client {
 			continue
 		}
-		(*list)[i] = (*list)[len(*list)-1] // copy last element to index i
-		(*list)[len(*list)-1] = nil        // erase last element
-		*list = (*list)[:len(*list)-1]     // truncate slice
+		list[i] = list[len(list)-1] // copy last element to index i
+		list[len(list)-1] = nil     // erase last element
+		list = list[:len(list)-1]   // truncate slice
 	}
+	return list
 }
 
 func (this *Room) SendMessage(key string, message interface{}) {
@@ -61,26 +75,8 @@ func (this *Room) SendMessage(key string, message interface{}) {
 
 func (this *Room) Broadcast(client *Client, message interface{}) {
 	for _,c := range this.clientsByKey {
-		if(c != client) {
+		if c != client {
 			c.SendMessage(message)
 		}
 	}
-}
-
-func (this *Room) Register(client *Client, name string, key string) error {
-	if _, found := this.clientsByKey[key]; found {
-		return errors.New("key already registered")
-	}
-
-
-	client.Name = name
-	client.IsBot = true
-	client.Key = key
-
-	this.removeClientFromList(client, &this.Spectators)
-	this.Bots = append(this.Bots, client)
-	this.clientsByKey[key] = client
-
-	log.Infof("client [%s] registered with key [%s]", name, key)
-	return nil
 }

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"github.com/gorilla/mux"
+	"github.com/gorilla/websocket"
 	"github.com/Project-Wartemis/pw-backend/internal/base"
 	"github.com/Project-Wartemis/pw-backend/internal/message"
 	"github.com/Project-Wartemis/pw-backend/internal/util"
@@ -16,7 +17,7 @@ func NewRoomWrapper() *RoomWrapper {
 	return &RoomWrapper {}
 }
 
-func (this *RoomWrapper) AddClient(writer http.ResponseWriter, request *http.Request) {
+func (this *RoomWrapper) AddBot(writer http.ResponseWriter, request *http.Request) {
 	roomKey := mux.Vars(request)["room"]
 	room := base.GetLobby().GetRoomByKey(roomKey)
 	if room == nil {
@@ -37,6 +38,12 @@ func (this *RoomWrapper) AddClient(writer http.ResponseWriter, request *http.Req
 		return
 	}
 
+	found := room.GetClientByKey(*clientKey)
+	if found != nil {
+		util.WriteStatus(writer, http.StatusConflict, fmt.Sprintf("Bot [%s] is already present", client.Name))
+		return
+	}
+
 	message := message.GameMessage{
 		Type: "game",
 		Key: roomKey,
@@ -54,8 +61,19 @@ func (this *RoomWrapper) NewConnection(writer http.ResponseWriter, request *http
 		return
 	}
 
+	this.newConnection(room, writer, request);
+}
+
+func (this *RoomWrapper) newConnection(room *base.Room, writer http.ResponseWriter, request *http.Request) {
 	client := room.CreateAndAddClient()
 	defer room.RemoveClient(client)
 
-	util.SetupWebSocket(writer, request, client.SetConnection, client.HandleMessage)
+	postInit := func(connection *websocket.Conn) {
+		client.SetConnection(connection)
+		client.SendMessage(message.Message{
+			Type: "connect",
+		})
+	}
+
+	util.SetupWebSocket(writer, request, postInit, client.HandleMessage)
 }

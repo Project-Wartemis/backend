@@ -6,45 +6,48 @@ import (
 )
 
 type Message struct {
-	Type string
+	Type string `json:"type"`
 }
 
 // TODO temporary, remove later
 type EchoMessage struct {
-	Value string
+	Message
+	Value string `json:"value"`
 }
 
 type RegisterMessage struct {
+	Message
+	ClientType string
 	Name string
 	Key string
 }
 
-func ParseMessage(raw []byte) *Message {
+func ParseMessage(raw []byte) (*Message, error) {
 	message := &Message{}
 	err := json.Unmarshal(raw, message)
 	if err != nil {
-		log.Errorf("Could not parse Message {%s}", raw)
-		log.Panic(err)
+		log.Warnf("Could not parse Message [%s]", raw)
+		return nil, err
 	}
-	return message
+	return message, nil
 }
 
-func ParseEchoMessage(raw []byte) *EchoMessage {
+func ParseEchoMessage(raw []byte) (*EchoMessage, error) {
 	message := &EchoMessage{}
 	err := json.Unmarshal(raw, message)
 	if err != nil {
-		log.Errorf("Could not parse EchoMessage {%s}", raw)
-		log.Panic(err)
+		log.Warnf("Could not parse EchoMessage [%s]", raw)
+		return nil, err
 	}
-	return message
+	return message, nil
 }
 
-func ParseRegisterMessage(raw []byte) *RegisterMessage {
+func ParseRegisterMessage(raw []byte) (*RegisterMessage, error) {
 	message := &RegisterMessage{}
 	err := json.Unmarshal(raw, message)
 	if err != nil {
-		log.Errorf("Could not parse RegisterMessage {%s}", raw)
-		log.Panic(err)
+		log.Warnf("Could not parse RegisterMessage [%s]", raw)
+		return nil, err
 	}
-	return message
+	return message, nil
 }

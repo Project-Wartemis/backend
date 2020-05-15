@@ -8,12 +8,16 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var upgrader = websocket.Upgrader{} // use default options
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool {
+		return true // accept connections from anywhere
+	},
+}
 
 func WriteStatus(writer http.ResponseWriter, status int, message string, errors ...error) {
 	log.Warnf("%s: %s", message, errors)
 	writer.WriteHeader(status)
-	writer.Write([]byte(fmt.Sprintf(`{"message": "%s", "errors": [%s]}`, message, errors)))
+	writer.Write([]byte(fmt.Sprintf(`{"message": "%s", "errors": %s}`, message, errors)))
 }
 
 func WriteJson(writer http.ResponseWriter, value interface{}) {

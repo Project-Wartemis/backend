@@ -21,32 +21,32 @@ type MoveRequestMessage struct {
 	Payload map[string]json.RawMessage `json:"payload"`
 }
 
-func ParseGameMessage(raw []byte) *GameMessage {
+func ParseGameMessage(raw []byte) (*GameMessage, error) {
 	message := &GameMessage{}
 	err := json.Unmarshal(raw, message)
 	if err != nil {
-		log.Errorf("Could not parse GameMessage {%s}", raw)
-		log.Panic(err)
+		log.Warnf("Could not parse GameMessage [%s]", raw)
+		return nil, err
 	}
-	return message
+	return message, nil
 }
 
-func ParseGamestateMessage(raw []byte) *GamestateMessage {
+func ParseGamestateMessage(raw []byte) (*GamestateMessage, error) {
 	message := &GamestateMessage{}
 	err := json.Unmarshal(raw, message)
 	if err != nil {
-		log.Errorf("Could not parse GamestateMessage {%s}", raw)
-		log.Panic(err)
+		log.Warnf("Could not parse GamestateMessage [%s]", raw)
+		return nil, err
 	}
-	return message
+	return message, nil
 }
 
-func ParseMoveRequestMessage(raw []byte) *MoveRequestMessage {
+func ParseMoveRequestMessage(raw []byte) (*MoveRequestMessage, error) {
 	message := &MoveRequestMessage{}
 	err := json.Unmarshal(raw, message)
 	if err != nil {
-		log.Errorf("Could not parse MoveRequestMessage {%s}", raw)
-		log.Panic(err)
+		log.Warnf("Could not parse MoveRequestMessage [%s]", raw)
+		return nil, err
 	}
-	return message
+	return message, nil
 }

@@ -28,8 +28,6 @@ function setupNewSocket(endpoint) {
     });
 
     connection.on('message', handleMessage.bind(undefined, connection));
-
-    register(connection);
   });
 
   console.log(`connecting to socket @ ${endpoint}`);
@@ -43,19 +41,10 @@ function sendMessage(connection, message) {
 function register(connection) {
   sendMessage(connection, {
     type: 'register',
+    clientType: 'bot',
     name: 'Robbot',
     key: KEY
   });
-}
-
-function sendRandomEcho(connection) {
-  if(!connection.connected)
-    return;
-  sendMessage(connection, {
-    type: 'echo',
-    value: Math.round(Math.random() * 0xFFFFFF)+''
-  });
-  setTimeout(sendRandomEcho, 1000, connection);
 }
 
 function handleMessage(connection, message) {
@@ -67,8 +56,18 @@ function handleMessage(connection, message) {
   console.log(JSON.stringify(message));
 
   switch(message.type) {
+    case 'connect': handleConnectMessage(connection, message); break;
     case 'game': handleGameMessage(connection, message); break;
   }
+}
+
+function handleConnectMessage(connection, message) {
+  sendMessage(connection, {
+    type: 'register',
+    clientType: 'bot',
+    name: 'Robbot',
+    key: KEY
+  });
 }
 
 function handleGameMessage(connection, message) {

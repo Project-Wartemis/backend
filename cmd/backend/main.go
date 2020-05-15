@@ -14,8 +14,8 @@ func main() {
 
 	log.Info("Execute main")
 
-	lobbyWrapper := wrapper.NewLobbyWrapper()
 	roomWrapper := wrapper.NewRoomWrapper()
+	lobbyWrapper := wrapper.NewLobbyWrapper(roomWrapper)
 
 	router := master.NewRouter()
 	router.Initialise(lobbyWrapper, roomWrapper)
