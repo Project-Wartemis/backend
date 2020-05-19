@@ -2,7 +2,7 @@ package base
 
 import (
 	"errors"
-	"sync"
+	sync "github.com/sasha-s/go-deadlock"
 	log "github.com/sirupsen/logrus"
 	"github.com/Project-Wartemis/pw-backend/internal/util"
 )
@@ -61,6 +61,7 @@ func (this *Room) AddClient(client *Client) error {
 	this.RUnlock()
 
 	this.Lock()
+	defer this.Unlock()
 	this.clientsById[client.Id] = client
 	if client.Type != "" {
 		this.Clients[client.Type] = append(this.Clients[client.Type], client)
@@ -68,13 +69,12 @@ func (this *Room) AddClient(client *Client) error {
 	if client.Type == "engine" {
 		this.engine = client
 	}
-	this.Unlock()
-	GetLobby().TriggerUpdated()
 	return nil
 }
 
 func (this *Room) RemoveClient(client *Client) {
 	this.Lock()
+	defer this.Unlock()
 	log.Infof("Removing client [%s] from room [%s]", client.Name, this.Name)
 	delete(this.clientsById, client.Id)
 	if client.Type != "" {
@@ -83,8 +83,6 @@ func (this *Room) RemoveClient(client *Client) {
 	if client.Type == "engine" {
 		this.engine = nil
 	}
-	this.Unlock()
-	GetLobby().TriggerUpdated()
 }
 
 // not goroutine safe, expects caller to lock

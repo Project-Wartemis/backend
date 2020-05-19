@@ -1,7 +1,7 @@
 package base
 
 import (
-	"sync"
+	sync "github.com/sasha-s/go-deadlock"
 	log "github.com/sirupsen/logrus"
 	"github.com/Project-Wartemis/pw-backend/internal/message"
 )

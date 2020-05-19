@@ -1,7 +1,7 @@
 package util
 
 import (
-	"sync"
+	sync "github.com/sasha-s/go-deadlock"
 )
 
 func Includes(slice []string, value string) bool {

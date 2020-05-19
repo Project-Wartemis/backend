@@ -2,9 +2,10 @@ package base
 
 import (
 	"fmt"
-	"sync"
+	"time"
 	"encoding/json"
 	"github.com/gorilla/websocket"
+	sync "github.com/sasha-s/go-deadlock"
 	log "github.com/sirupsen/logrus"
 	msg "github.com/Project-Wartemis/pw-backend/internal/message"
 	"github.com/Project-Wartemis/pw-backend/internal/util"
@@ -29,6 +30,7 @@ type Client struct {
 	Name string `json:"name"`
 	isRegistered bool
 	connection *websocket.Conn
+	pinger *time.Ticker
 }
 
 func NewClient(room *Room) *Client {
@@ -47,10 +49,22 @@ func (this *Client) SetConnection(connection *websocket.Conn) {
 	this.connection = connection
 }
 
+func (this *Client) HandleDisconnect() {
+	this.Lock()
+	if this.pinger != nil {
+		this.pinger.Stop()
+	}
+	this.connection = nil
+	this.Unlock()
+	this.Room.RemoveClient(this)
+	GetLobby().TriggerUpdated()
+}
+
 func (this *Client) SendMessage(message interface{}) {
 	this.RLock()
-	log.Debugf("Sending message to [%s]: [%s]", this.Name, message)
+	name := this.Name
 	this.RUnlock()
+	log.Debugf("Sending message to [%s]: [%s]", name, message)
 	text, err := json.Marshal(message)
 	if err != nil {
 		log.Errorf("Unexpected error while parsing message to json: [%s]", message)
@@ -58,13 +72,30 @@ func (this *Client) SendMessage(message interface{}) {
 	}
 
 	this.Lock()
+	if this.connection == nil {
+		log.Warnf("Cannot send a message to [%s] because not connected", name)
+	}
 	err = this.connection.WriteMessage(websocket.TextMessage, text)
 	this.Unlock()
 
 	if err != nil {
-		this.RLock()
-		defer this.RUnlock()
-		log.Errorf("Unexpected error while sending message to [%s] : [%s]", this.Name, message)
+		log.Errorf("Unexpected error while sending message to [%s] : [%s]", name, message)
+		return
+	}
+}
+
+func (this *Client) sendPing() {
+	this.RLock()
+	name := this.Name
+	this.RUnlock()
+	log.Debugf("Sending ping to [%s]", name)
+
+	this.Lock()
+	err := this.connection.WriteMessage(websocket.PingMessage, nil)
+	this.Unlock()
+
+	if err != nil {
+		log.Errorf("Unexpected error while sending ping to [%s] - [%s]", name, err)
 		return
 	}
 }
@@ -72,6 +103,16 @@ func (this *Client) SendMessage(message interface{}) {
 func (this *Client) SendError(message string) {
 	log.Infof("Sending error message to [%s]: [%s]", this.Name, message)
 	this.SendMessage(msg.NewErrorMessage(message))
+}
+
+func (this *Client) StartPinging() {
+	this.Lock()
+	this.pinger = time.NewTicker(30 * time.Second)
+	this.Unlock()
+	for {
+		<- this.pinger.C
+		this.sendPing()
+	}
 }
 
 func (this *Client) HandleMessage(raw []byte) {
@@ -121,6 +162,8 @@ func (this *Client) handleRegisterMessage(raw []byte) {
 		this.SendError(fmt.Sprintf("Could not register: [Invalid value for clientType [%s]]", message.ClientType))
 		return
 	}
+
+	defer GetLobby().TriggerUpdated()
 
 	this.Room.RemoveClient(this);
 
