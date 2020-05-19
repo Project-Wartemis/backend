@@ -14,12 +14,12 @@ type Lobby struct {
 
 var (
 	lobby *Lobby
+	LOBBY_LOCK sync.Mutex
 )
 
 func GetLobby() *Lobby {
-	lock := &sync.Mutex{}
-	lock.Lock()
-	defer lock.Unlock()
+	LOBBY_LOCK.Lock()
+	defer LOBBY_LOCK.Unlock()
 
 	if lobby != nil {
 		return lobby
@@ -36,6 +36,8 @@ func GetLobby() *Lobby {
 }
 
 func (this *Lobby) GetRoomById(id int) *Room {
+	this.RLock()
+	defer this.RUnlock()
 	return this.roomsById[id]
 }
 
@@ -47,21 +49,25 @@ func (this *Lobby) CreateAndAddRoom(name string) *Room {
 }
 
 func (this *Lobby) AddRoom(room *Room) {
+	this.Lock()
 	this.Rooms = append(this.Rooms, room)
 	this.roomsById[room.Id] = room
+	this.Unlock()
 	this.TriggerUpdated()
 }
 
 func (this *Lobby) RemoveRoom(room *Room) {
+	this.Lock()
 	delete(this.roomsById, room.Id)
 	for i,r := range this.Rooms {
 		if r.Id != room.Id {
 			continue
 		}
 		this.Rooms[i] = this.Rooms[len(this.Rooms)-1] // copy last element to index i
-		this.Rooms[len(this.Rooms)-1] = nil     // erase last element
+		this.Rooms[len(this.Rooms)-1] = nil           // erase last element
 		this.Rooms = this.Rooms[:len(this.Rooms)-1]   // truncate slice
 	}
+	this.Unlock()
 	this.TriggerUpdated()
 }
 

@@ -2,6 +2,7 @@ package util
 
 import (
 	"fmt"
+	"time"
 	"encoding/json"
 	"net/http"
 	"github.com/gorilla/websocket"
@@ -13,6 +14,8 @@ var upgrader = websocket.Upgrader{
 		return true // accept connections from anywhere
 	},
 }
+
+const PING_TIME = 30 * time.Second;
 
 func WriteStatus(writer http.ResponseWriter, status int, message string, errors ...error) {
 	log.Warnf("%s: %s", message, errors)

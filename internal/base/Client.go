@@ -16,20 +16,13 @@ const (
 	TYPE_ENGINE = "engine"
 )
 
-var CLIENT_TYPES = []string{TYPE_VIEWER, TYPE_BOT, TYPE_ENGINE}
-
-var CLIENT_COUNTER = 0
-
-func getNextClientId() int {
-	lock := &sync.Mutex{}
-	lock.Lock()
-	defer lock.Unlock()
-
-	CLIENT_COUNTER++
-	return CLIENT_COUNTER
-}
+var (
+	CLIENT_TYPES = []string{TYPE_VIEWER, TYPE_BOT, TYPE_ENGINE}
+	CLIENT_COUNTER util.SafeCounter
+)
 
 type Client struct {
+	sync.RWMutex
 	Id int      `json:"id"`
 	Room *Room  `json:"-"`
 	Type string `json:"-"`
@@ -40,7 +33,7 @@ type Client struct {
 
 func NewClient(room *Room) *Client {
 	return &Client {
-		Id: getNextClientId(),
+		Id: CLIENT_COUNTER.GetNext(),
 		Room: room,
 		Type: "",
 		isRegistered: false,
@@ -49,18 +42,28 @@ func NewClient(room *Room) *Client {
 }
 
 func (this *Client) SetConnection(connection *websocket.Conn) {
+	this.Lock()
+	defer this.Unlock()
 	this.connection = connection
 }
 
 func (this *Client) SendMessage(message interface{}) {
+	this.RLock()
 	log.Debugf("Sending message to [%s]: [%s]", this.Name, message)
+	this.RUnlock()
 	text, err := json.Marshal(message)
 	if err != nil {
 		log.Errorf("Unexpected error while parsing message to json: [%s]", message)
 		return
 	}
+
+	this.Lock()
 	err = this.connection.WriteMessage(websocket.TextMessage, text)
+	this.Unlock()
+
 	if err != nil {
+		this.RLock()
+		defer this.RUnlock()
 		log.Errorf("Unexpected error while sending message to [%s] : [%s]", this.Name, message)
 		return
 	}
@@ -121,9 +124,11 @@ func (this *Client) handleRegisterMessage(raw []byte) {
 
 	this.Room.RemoveClient(this);
 
+	this.Lock()
 	this.Type = message.ClientType
 	this.Name = message.Name
 	this.isRegistered = false
+	this.Unlock()
 
 	err = this.Room.AddClient(this);
 	if err != nil {
@@ -132,7 +137,10 @@ func (this *Client) handleRegisterMessage(raw []byte) {
 		return
 	}
 
+	this.Lock()
 	this.isRegistered = true
+	this.Unlock()
+
 	log.Infof("client [%s] registered on room [%s] as a [%s]", this.Name, this.Room.Name, this.Type)
 
 	this.SendMessage(msg.NewRegisteredMessage(this.Id))
@@ -153,7 +161,10 @@ func (this *Client) handleRoomMessage(raw []byte) {
 
 	room := GetLobby().CreateAndAddRoom(message.Name)
 
-	this.SendMessage(msg.NewInviteMessage(room.Id, this.Id))
+	this.RLock()
+	id := this.Id
+	this.RUnlock()
+	this.SendMessage(msg.NewInviteMessage(room.Id, id))
 	engine.SendMessage(msg.NewInviteMessage(room.Id, engine.Id))
 }
 
