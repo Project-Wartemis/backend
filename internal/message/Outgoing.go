@@ -1,52 +1,59 @@
 package message
 
-import (
-	"encoding/json"
-	log "github.com/sirupsen/logrus"
-)
-
-type GameMessage struct {
-	Type string `json:"type"`
-	Key string  `json:"key"`
+type ErrorMessage struct {
+	Message
+	Content string `json:"message"`
 }
 
-type GamestateMessage struct {
-	Type string                        `json:"type"`
-	Payload map[string]json.RawMessage `json:"payload"`
+type LobbyMessage struct {
+	Message
+	Lobby interface{} `json:"lobby"`
 }
 
-type MoveRequestMessage struct {
-	Type string                        `json:"type"`
-	Key string                         `json:"-"`
-	Payload map[string]json.RawMessage `json:"payload"`
+type ConnectedMessage struct {
+	Message
 }
 
-func ParseGameMessage(raw []byte) (*GameMessage, error) {
-	message := &GameMessage{}
-	err := json.Unmarshal(raw, message)
-	if err != nil {
-		log.Warnf("Could not parse GameMessage [%s]", raw)
-		return nil, err
+type RegisteredMessage struct {
+	Message
+	Id int `json:"id"`
+}
+
+func NewErrorMessage(content string) ErrorMessage {
+	message := Message {
+		Type: "error",
 	}
-	return message, nil
+	return ErrorMessage {
+		Message: message,
+		Content: content,
+	}
 }
 
-func ParseGamestateMessage(raw []byte) (*GamestateMessage, error) {
-	message := &GamestateMessage{}
-	err := json.Unmarshal(raw, message)
-	if err != nil {
-		log.Warnf("Could not parse GamestateMessage [%s]", raw)
-		return nil, err
+func NewLobbyMessage(lobby interface{}) LobbyMessage {
+	message := Message {
+		Type: "lobby",
 	}
-	return message, nil
+	return LobbyMessage {
+		Message: message,
+		Lobby: lobby,
+	}
 }
 
-func ParseMoveRequestMessage(raw []byte) (*MoveRequestMessage, error) {
-	message := &MoveRequestMessage{}
-	err := json.Unmarshal(raw, message)
-	if err != nil {
-		log.Warnf("Could not parse MoveRequestMessage [%s]", raw)
-		return nil, err
+func NewConnectedMessage() ConnectedMessage {
+	message := Message {
+		Type: "connected",
 	}
-	return message, nil
+	return ConnectedMessage {
+		Message: message,
+	}
+}
+
+func NewRegisteredMessage(id int) RegisteredMessage {
+	message := Message {
+		Type: "registered",
+	}
+	return RegisteredMessage {
+		Message: message,
+		Id: id,
+	}
 }

@@ -1,9 +1,7 @@
 const ws = require('websocket').client;
-const uuid = require('uuid');
 
 const URL = 'https://localhost:8080/socket';
 //const URL = 'https://api.wartemis.com/socket';
-const KEY = uuid.v4();
 
 function start() {
   setupNewSocket(URL);
@@ -38,41 +36,36 @@ function sendMessage(connection, message) {
   connection.sendUTF(JSON.stringify(message));
 }
 
-function register(connection) {
-  sendMessage(connection, {
-    type: 'register',
-    clientType: 'bot',
-    name: 'Robbot',
-    key: KEY
-  });
-}
-
 function handleMessage(connection, message) {
   if(message.type !== 'utf8')
     console.log('Got a non-text message, ignoring');
   message = JSON.parse(message.utf8Data);
 
-  console.log('Got a message!');
-  console.log(JSON.stringify(message));
+  console.log('Got a message! ' + JSON.stringify(message));
 
   switch(message.type) {
-    case 'connect': handleConnectMessage(connection, message); break;
-    case 'game': handleGameMessage(connection, message); break;
+    case 'connected': handleConnectedMessage(connection, message); break;
+    case 'registered': handleRegisteredMessage(connection, message); break;
+    case 'invite': handleInviteMessage(connection, message); break;
   }
 }
 
-function handleConnectMessage(connection, message) {
+function handleConnectedMessage(connection, message) {
+  console.log('connected!');
   sendMessage(connection, {
     type: 'register',
     clientType: 'bot',
-    name: 'Robbot',
-    key: KEY
+    name: 'Robbot'
   });
 }
 
-function handleGameMessage(connection, message) {
-  console.log('handled');
-  setupNewSocket(URL + '/' + message.key);
+function handleRegisteredMessage(connection, message) {
+  console.log(`Registered with id ${message.id}!`);
+}
+
+function handleInviteMessage(connection, message) {
+  console.log(`invited to room ${message.room}!`);
+  setupNewSocket(URL + '/' + message.room);
 }
 
 start();

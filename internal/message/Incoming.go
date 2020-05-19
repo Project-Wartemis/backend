@@ -9,17 +9,49 @@ type Message struct {
 	Type string `json:"type"`
 }
 
-// TODO temporary, remove later
-type EchoMessage struct {
-	Message
-	Value string `json:"value"`
-}
-
 type RegisterMessage struct {
 	Message
 	ClientType string
 	Name string
-	Key string
+}
+
+type RoomMessage struct {
+	Message
+	Name string
+	Engine int
+}
+
+type InviteMessage struct { // also outgoing
+	Message
+	Client int `json:"client"`
+	Room int `json:"room"`
+}
+
+type StartMessage struct { // also outgoing
+	Message
+	Players []int `json:"players"`
+}
+
+type StateMessage struct { // also outgoing
+	Message
+	State map[string]json.RawMessage `json:"state"`
+}
+
+type ActionMessage struct { // also outgoing
+	Message
+	Player int                        `json:"player"`
+	Action map[string]json.RawMessage `json:"action"`
+}
+
+func NewInviteMessage(room int, client int) InviteMessage {
+	message := Message {
+		Type: "invite",
+	}
+	return InviteMessage {
+		Message: message,
+		Room: room,
+		Client: client,
+	}
 }
 
 func ParseMessage(raw []byte) (*Message, error) {
@@ -32,21 +64,61 @@ func ParseMessage(raw []byte) (*Message, error) {
 	return message, nil
 }
 
-func ParseEchoMessage(raw []byte) (*EchoMessage, error) {
-	message := &EchoMessage{}
-	err := json.Unmarshal(raw, message)
-	if err != nil {
-		log.Warnf("Could not parse EchoMessage [%s]", raw)
-		return nil, err
-	}
-	return message, nil
-}
-
 func ParseRegisterMessage(raw []byte) (*RegisterMessage, error) {
 	message := &RegisterMessage{}
 	err := json.Unmarshal(raw, message)
 	if err != nil {
 		log.Warnf("Could not parse RegisterMessage [%s]", raw)
+		return nil, err
+	}
+	return message, nil
+}
+
+func ParseRoomMessage(raw []byte) (*RoomMessage, error) {
+	message := &RoomMessage{}
+	err := json.Unmarshal(raw, message)
+	if err != nil {
+		log.Warnf("Could not parse RoomMessage [%s]", raw)
+		return nil, err
+	}
+	return message, nil
+}
+
+func ParseInviteMessage(raw []byte) (*InviteMessage, error) {
+	message := &InviteMessage{}
+	err := json.Unmarshal(raw, message)
+	if err != nil {
+		log.Warnf("Could not parse InviteMessage [%s]", raw)
+		return nil, err
+	}
+	return message, nil
+}
+
+func ParseStartMessage(raw []byte) (*StartMessage, error) {
+	message := &StartMessage{}
+	err := json.Unmarshal(raw, message)
+	if err != nil {
+		log.Warnf("Could not parse StartMessage [%s]", raw)
+		return nil, err
+	}
+	return message, nil
+}
+
+func ParseStateMessage(raw []byte) (*StateMessage, error) {
+	message := &StateMessage{}
+	err := json.Unmarshal(raw, message)
+	if err != nil {
+		log.Warnf("Could not parse StateMessage [%s]", raw)
+		return nil, err
+	}
+	return message, nil
+}
+
+func ParseActionMessage(raw []byte) (*ActionMessage, error) {
+	message := &ActionMessage{}
+	err := json.Unmarshal(raw, message)
+	if err != nil {
+		log.Warnf("Could not parse ActionMessage [%s]", raw)
 		return nil, err
 	}
 	return message, nil

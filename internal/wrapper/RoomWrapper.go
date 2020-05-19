@@ -2,8 +2,8 @@ package wrapper
 
 import (
 	"fmt"
-	"encoding/json"
 	"net/http"
+	"strconv"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"github.com/Project-Wartemis/pw-backend/internal/base"
@@ -17,47 +17,18 @@ func NewRoomWrapper() *RoomWrapper {
 	return &RoomWrapper {}
 }
 
-func (this *RoomWrapper) AddBot(writer http.ResponseWriter, request *http.Request) {
-	roomKey := mux.Vars(request)["room"]
-	room := base.GetLobby().GetRoomByKey(roomKey)
-	if room == nil {
-		util.WriteStatus(writer, http.StatusNotFound, fmt.Sprintf("Could not find room for key [%s]", roomKey))
-		return
-	}
-
-	clientKey := new(string)
-	err := json.NewDecoder(request.Body).Decode(clientKey)
-	if err != nil {
-		util.WriteStatus(writer, http.StatusBadRequest, "Could not parse clientKey", err)
-		return
-	}
-
-	client := base.GetLobby().GetClientByKey(*clientKey)
-	if client == nil {
-		util.WriteStatus(writer, http.StatusNotFound, fmt.Sprintf("Could not find client for key [%s]", *clientKey))
-		return
-	}
-
-	found := room.GetClientByKey(*clientKey)
-	if found != nil {
-		util.WriteStatus(writer, http.StatusConflict, fmt.Sprintf("Bot [%s] is already present", client.Name))
-		return
-	}
-
-	message := message.GameMessage{
-		Type: "game",
-		Key: roomKey,
-	}
-	client.SendMessage(message)
-
-	util.WriteJson(writer, client)
-}
-
 func (this *RoomWrapper) NewConnection(writer http.ResponseWriter, request *http.Request) {
-	roomKey := mux.Vars(request)["room"]
-	room := base.GetLobby().GetRoomByKey(roomKey)
+	roomIdText := mux.Vars(request)["room"]
+
+	roomId, err := strconv.Atoi(roomIdText)
+	if err != nil {
+		util.WriteStatus(writer, http.StatusNotFound, fmt.Sprintf("Could not parse [%s] to id", roomIdText))
+		return
+	}
+
+	room := base.GetLobby().GetRoomById(roomId)
 	if room == nil {
-		util.WriteStatus(writer, http.StatusNotFound, fmt.Sprintf("Could not find room for key [%s]", roomKey))
+		util.WriteStatus(writer, http.StatusNotFound, fmt.Sprintf("Could not find room for id [%d]", roomId))
 		return
 	}
 
@@ -70,9 +41,7 @@ func (this *RoomWrapper) newConnection(room *base.Room, writer http.ResponseWrit
 
 	postInit := func(connection *websocket.Conn) {
 		client.SetConnection(connection)
-		client.SendMessage(message.Message{
-			Type: "connect",
-		})
+		client.SendMessage(message.NewConnectedMessage())
 	}
 
 	util.SetupWebSocket(writer, request, postInit, client.HandleMessage)
