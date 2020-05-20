@@ -1,3 +1,3 @@
 (
-    go get github.com/Project-Wartemis/pw-backend/cmd/backend
+    go get -race github.com/Project-Wartemis/pw-backend/cmd/backend
 )
