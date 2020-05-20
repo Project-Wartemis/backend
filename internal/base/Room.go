@@ -40,8 +40,10 @@ func (this *Room) GetBotIds() []int {
 	this.RLock()
 	defer this.RUnlock()
 	result := []int{}
-	for id := range this.clientsById {
-		result = append(result, id)
+	for id,client := range this.clientsById {
+		if client.Type == TYPE_BOT {
+			result = append(result, id)
+		}
 	}
 	return result
 }
@@ -106,7 +108,7 @@ func (this *Room) SendMessage(id int, message interface{}) {
 	this.RLock()
 	defer this.RUnlock()
 	if client, found := this.clientsById[id]; found {
-		client.SendMessage(message)
+		go client.SendMessage(message)
 	}
 }
 
@@ -115,7 +117,7 @@ func (this *Room) Broadcast(client *Client, message interface{}) {
 	defer this.RUnlock()
 	for id,c := range this.clientsById {
 		if id != client.Id {
-			c.SendMessage(message)
+			go c.SendMessage(message)
 		}
 	}
 }
@@ -124,12 +126,13 @@ func (this *Room) BroadcastToViewers(message interface{}) {
 	this.RLock()
 	defer this.RUnlock()
 	for _,c := range this.Clients["viewer"] {
-		c.SendMessage(message)
+		go c.SendMessage(message)
 	}
 }
 
 func (this *Room) SendMessageToEngine(message interface{}) {
 	this.RLock()
-	defer this.RUnlock()
-	this.SendMessage(this.engine.Id, message)
+	id := this.engine.Id
+	this.RUnlock()
+	this.SendMessage(id, message)
 }

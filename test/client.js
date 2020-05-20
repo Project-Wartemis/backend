@@ -41,7 +41,7 @@ function handleMessage(connection, message) {
     console.log('Got a non-text message, ignoring');
   message = JSON.parse(message.utf8Data);
 
-  console.log('Got a message! ' + JSON.stringify(message));
+  console.log(`Got a ${message.type} message!`);
 
   switch(message.type) {
     case 'connected': handleConnectedMessage(connection, message); break;

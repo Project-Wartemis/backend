@@ -61,25 +61,25 @@ func (this *Client) HandleDisconnect() {
 }
 
 func (this *Client) SendMessage(message interface{}) {
-	this.RLock()
-	name := this.Name
-	this.RUnlock()
-	log.Debugf("Sending message to [%s]: [%s]", name, message)
+	// entire function needs to lock, we need to keep a lock on the message
+	// but that still doesn't guarantee this works.
+	this.Lock()
+	defer this.Unlock()
+
+	log.Debugf("Sending message to [%s]: [%s]", this.Name, message)
 	text, err := json.Marshal(message)
 	if err != nil {
 		log.Errorf("Unexpected error while parsing message to json: [%s]", message)
 		return
 	}
 
-	this.Lock()
 	if this.connection == nil {
-		log.Warnf("Cannot send a message to [%s] because not connected", name)
+		log.Warnf("Cannot send a message to [%s] because not connected", this.Name)
 	}
 	err = this.connection.WriteMessage(websocket.TextMessage, text)
-	this.Unlock()
 
 	if err != nil {
-		log.Errorf("Unexpected error while sending message to [%s] : [%s]", name, message)
+		log.Errorf("Unexpected error while sending message to [%s] : [%s]", this.Name, message)
 		return
 	}
 }
