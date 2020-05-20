@@ -23,8 +23,9 @@ type RoomMessage struct {
 
 type InviteMessage struct { // also outgoing
 	Message
-	Client int `json:"client"`
-	Room int `json:"room"`
+	Client int  `json:"client"`
+	Room int    `json:"room"`
+	Name string `json:"name"`
 }
 
 type StartMessage struct { // also outgoing
@@ -43,14 +44,15 @@ type ActionMessage struct { // also outgoing
 	Action map[string]json.RawMessage `json:"action"`
 }
 
-func NewInviteMessage(room int, client int) InviteMessage {
+func NewInviteMessage(room int, name string, client int) InviteMessage {
 	message := Message {
 		Type: "invite",
 	}
 	return InviteMessage {
 		Message: message,
-		Room: room,
 		Client: client,
+		Room: room,
+		Name: name,
 	}
 }
 

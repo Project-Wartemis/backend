@@ -204,11 +204,8 @@ func (this *Client) handleRoomMessage(raw []byte) {
 
 	room := GetLobby().CreateAndAddRoom(message.Name)
 
-	this.RLock()
-	id := this.Id
-	this.RUnlock()
-	this.SendMessage(msg.NewInviteMessage(room.Id, id))
-	engine.SendMessage(msg.NewInviteMessage(room.Id, engine.Id))
+	this.SendMessage(msg.NewInviteMessage(room.Id, room.Name, this.Id))
+	engine.SendMessage(msg.NewInviteMessage(room.Id, room.Name, engine.Id))
 }
 
 func (this *Client) handleInviteMessage(raw []byte) {
@@ -223,6 +220,7 @@ func (this *Client) handleInviteMessage(raw []byte) {
 		this.SendError(fmt.Sprintf("Could not find room with id [%d]", message.Room))
 		return
 	}
+	message.Name = room.Name
 
 	client := GetLobby().GetClientById(message.Client)
 	if client == nil {
