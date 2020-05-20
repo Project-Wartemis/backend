@@ -4,4 +4,6 @@ WORKDIR /go/src/github.com/Project-Wartemis/pw-backend
 
 COPY . .
 
-CMD ./backend
+RUN scripts/build.sh
+
+CMD scripts/run.sh

@@ -31,7 +31,7 @@ jobs:
         go-version: ${{env.GO_VERSION}}
 
     - name: Build
-      run: go build -race -o ./backend ./cmd/backend
+      run: go build -o ./backend ./cmd/backend
 
     - name: Docker
       uses: elgohr/Publish-Docker-Github-Action@master
