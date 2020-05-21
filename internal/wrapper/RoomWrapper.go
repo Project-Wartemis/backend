@@ -39,10 +39,10 @@ func (this *RoomWrapper) newConnection(room *base.Room, writer http.ResponseWrit
 	client := room.CreateAndAddClient()
 	defer client.HandleDisconnect()
 
-	postInit := func(connection *websocket.Conn) {
+	postInit := func(conn *websocket.Conn) {
+		connection := base.NewConnection(conn)
 		client.SetConnection(connection)
 		client.SendMessage(message.NewConnectedMessage())
-		go client.StartPinging()
 	}
 
 	util.SetupWebSocket(writer, request, postInit, client.HandleMessage)

@@ -44,11 +44,11 @@ type ActionMessage struct { // also outgoing
 	Action map[string]json.RawMessage `json:"action"`
 }
 
-func NewInviteMessage(room int, name string, client int) InviteMessage {
+func NewInviteMessage(room int, name string, client int) *InviteMessage {
 	message := Message {
 		Type: "invite",
 	}
-	return InviteMessage {
+	return &InviteMessage {
 		Message: message,
 		Client: client,
 		Room: room,

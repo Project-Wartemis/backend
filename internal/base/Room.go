@@ -1,6 +1,7 @@
 package base
 
 import (
+	"encoding/json"
 	"errors"
 	sync "github.com/sasha-s/go-deadlock"
 	log "github.com/sirupsen/logrus"
@@ -13,11 +14,11 @@ var (
 
 type Room struct {
 	sync.RWMutex
-	Id int                       `json:"id"`
-	Name string                  `json:"name"`
-	Clients map[string][]*Client `json:"clients"`
-	Started bool                 `json:"started"`
-	Stopped bool                 `json:"stopped"`
+	Id int            `json:"id"`
+	Name string       `json:"name"`
+	Clients []*Client `json:"clients"`
+	Started bool      `json:"started"`
+	Stopped bool      `json:"stopped"`
 	engine *Client
 	clientsById map[int]*Client
 }
@@ -26,12 +27,167 @@ func NewRoom(name string) *Room {
 	return &Room {
 		Id: ROOM_COUNTER.GetNext(),
 		Name: name,
-		Clients: map[string][]*Client{},
+		Clients: []*Client{},
 		Started: false,
 		Stopped: false,
 		engine: nil,
 		clientsById: map[int]*Client{},
 	}
+}
+
+func (this *Room) CreateAndAddClient() *Client {
+	client := NewClient(this)
+	this.AddClient(client)
+	log.Infof("Added a new client to room [%s]", this.GetName())
+	return client
+}
+
+
+
+// basic communication related stuff
+
+func (this *Room) SendMessage(id int, message interface{}) {
+	client := this.GetClientById(id)
+	if client != nil {
+		client.SendMessage(message)
+	}
+}
+
+func (this *Room) Broadcast(id int, message interface{}) {
+	this.RLock()
+	defer this.RUnlock()
+	for _,client := range this.Clients {
+		if client.GetId() != id {
+			client.SendMessage(message)
+		}
+	}
+}
+
+func (this *Room) BroadcastToType(Type string, message interface{}) {
+	clients := this.GetClientIdsByType(Type)
+	for _,id := range clients {
+		this.SendMessage(id, message)
+	}
+}
+
+
+
+// getters and setters
+
+func (this *Room) GetId() int {
+	this.RLock()
+	defer this.RUnlock()
+	return this.Id
+}
+
+func (this *Room) SetId(id int) {
+	this.Lock()
+	defer this.Unlock()
+	this.Id = id
+}
+
+func (this *Room) GetName() string {
+	this.RLock()
+	defer this.RUnlock()
+	return this.Name
+}
+
+func (this *Room) SetName(name string) {
+	this.Lock()
+	defer this.Unlock()
+	this.Name = name
+}
+
+func (this *Room) GetClientIdsByType(Type string) []int {
+	this.RLock()
+	defer this.RUnlock()
+	result := []int{}
+	for id,client := range this.clientsById {
+		if client.Type == Type {
+			result = append(result, id)
+		}
+	}
+	return result
+}
+
+func (this *Room) AddClient(client *Client) error {
+	if client.GetType() == TYPE_ENGINE && this.getEngine() != nil {
+		return errors.New("engine already registered on this room")
+	}
+
+	this.SetClientById(client.GetId(), client)
+	if client.GetType() == TYPE_ENGINE {
+		this.setEngine(client)
+	}
+
+	this.Lock()
+	defer this.Unlock()
+	this.Clients = append(this.Clients, client)
+
+	return nil
+}
+
+func (this *Room) RemoveClient(client *Client) {
+	log.Infof("Removing client [%s] from room [%s]", client.GetName(), this.GetName())
+
+	this.RemoveClientById(client.GetId())
+	if client.GetType() == TYPE_ENGINE {
+		this.setEngine(nil)
+	}
+
+	this.Lock()
+	defer this.Unlock()
+	for i,c := range this.Clients {
+		// TODO remove
+		if c == nil {
+			log.Warn("okay... weird")
+		}
+		if client == nil {
+			log.Warn("okay... weirder!")
+		}
+		if c.Id == client.Id {
+			this.Clients[i] = this.Clients[len(this.Clients)-1] // copy last element to index i
+			this.Clients[len(this.Clients)-1] = nil             // erase last element
+			this.Clients = this.Clients[:len(this.Clients)-1]   // truncate slice
+			return;
+		}
+	}
+}
+
+func (this *Room) GetStarted() bool {
+	this.RLock()
+	defer this.RUnlock()
+	return this.Started
+}
+
+func (this *Room) SetStarted(started bool) {
+	this.Lock()
+	defer this.Unlock()
+	this.Started = started
+}
+
+func (this *Room) GetStopped() bool {
+	this.RLock()
+	defer this.RUnlock()
+	return this.Stopped
+}
+
+func (this *Room) SetStopped(stopped bool) {
+	this.Lock()
+	defer this.Unlock()
+	this.Stopped = stopped
+}
+
+func (this *Room) getEngine() *Client {
+	this.RLock()
+	defer this.RUnlock()
+	return this.engine
+}
+
+func (this *Room) setEngine(engine *Client) {
+	this.Lock()
+	defer this.Unlock()
+	this.engine = engine
 }
 
 func (this *Room) GetClientById(id int) *Client {
@@ -40,103 +196,26 @@ func (this *Room) GetClientById(id int) *Client {
 	return this.clientsById[id]
 }
 
-func (this *Room) GetBotIds() []int {
-	this.RLock()
-	defer this.RUnlock()
-	result := []int{}
-	for id,client := range this.clientsById {
-		if client.Type == TYPE_BOT {
-			result = append(result, id)
-		}
-	}
-	return result
-}
-
-func (this *Room) CreateAndAddClient() *Client {
-	client := NewClient(this)
-	this.AddClient(client)
-	log.Infof("Added a new client to room [%s]", this.Name)
-	return client
-}
-
-func (this *Room) AddClient(client *Client) error {
-	this.RLock()
-	if client.Type == TYPE_ENGINE && this.engine != nil {
-		return errors.New("engine already registered on this room")
-	}
-	this.RUnlock()
-
+func (this *Room) SetClientById(id int, client *Client) {
 	this.Lock()
 	defer this.Unlock()
-	this.clientsById[client.Id] = client
-	if client.Type != "" {
-		this.Clients[client.Type] = append(this.Clients[client.Type], client)
-	}
-	if client.Type == "engine" {
-		this.engine = client
-	}
-	return nil
+	this.clientsById[id] = client
 }
 
-func (this *Room) RemoveClient(client *Client) {
+func (this *Room) RemoveClientById(id int) {
 	this.Lock()
 	defer this.Unlock()
-	log.Infof("Removing client [%s] from room [%s]", client.Name, this.Name)
-	delete(this.clientsById, client.Id)
-	if client.Type != "" {
-		this.Clients[client.Type] = this.removeClientFromList(client, this.Clients[client.Type])
-	}
-	if client.Type == "engine" {
-		this.engine = nil
-	}
+	delete(this.clientsById, id)
 }
 
-// not goroutine safe, expects caller to lock
-func (this *Room) removeClientFromList(client *Client, list []*Client) []*Client {
-	if client == nil {
-		log.Error("Detected nil client in removeClientFromList")
-		return list
-	}
-	for i,c := range list {
-		if c.Id != client.Id {
-			continue
-		}
-		list[i] = list[len(list)-1] // copy last element to index i
-		list[len(list)-1] = nil     // erase last element
-		list = list[:len(list)-1]   // truncate slice
-	}
-	return list
-}
 
-func (this *Room) SendMessage(id int, message interface{}) {
-	this.RLock()
-	defer this.RUnlock()
-	if client, found := this.clientsById[id]; found {
-		go client.SendMessage(message)
-	}
-}
 
-func (this *Room) Broadcast(client *Client, message interface{}) {
-	this.RLock()
-	defer this.RUnlock()
-	for id,c := range this.clientsById {
-		if id != client.Id {
-			go c.SendMessage(message)
-		}
-	}
-}
+// lock for json marshalling
 
-func (this *Room) BroadcastToViewers(message interface{}) {
-	this.RLock()
-	defer this.RUnlock()
-	for _,c := range this.Clients["viewer"] {
-		go c.SendMessage(message)
-	}
-}
+type JRoom Room
 
-func (this *Room) SendMessageToEngine(message interface{}) {
-	this.RLock()
-	id := this.engine.Id
-	this.RUnlock()
-	this.SendMessage(id, message)
+func (this *Room) MarshalJSON() ([]byte, error) {
+    this.RLock()
+    defer this.RUnlock()
+    return json.Marshal(JRoom(*this))
 }

@@ -19,40 +19,40 @@ type RegisteredMessage struct {
 	Id int `json:"id"`
 }
 
-func NewErrorMessage(content string) ErrorMessage {
+func NewErrorMessage(content string) *ErrorMessage {
 	message := Message {
 		Type: "error",
 	}
-	return ErrorMessage {
+	return &ErrorMessage {
 		Message: message,
 		Content: content,
 	}
 }
 
-func NewLobbyMessage(lobby interface{}) LobbyMessage {
+func NewLobbyMessage(lobby interface{}) *LobbyMessage {
 	message := Message {
 		Type: "lobby",
 	}
-	return LobbyMessage {
+	return &LobbyMessage {
 		Message: message,
 		Lobby: lobby,
 	}
 }
 
-func NewConnectedMessage() ConnectedMessage {
+func NewConnectedMessage() *ConnectedMessage {
 	message := Message {
 		Type: "connected",
 	}
-	return ConnectedMessage {
+	return &ConnectedMessage {
 		Message: message,
 	}
 }
 
-func NewRegisteredMessage(id int) RegisteredMessage {
+func NewRegisteredMessage(id int) *RegisteredMessage {
 	message := Message {
 		Type: "registered",
 	}
-	return RegisteredMessage {
+	return &RegisteredMessage {
 		Message: message,
 		Id: id,
 	}
