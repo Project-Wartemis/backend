@@ -119,8 +119,8 @@ func (this *Client) HandleMessage(raw []byte) {
 	log.Debugf("got message: %s", raw)
 	message, err := msg.ParseMessage(raw)
 	if err != nil {
-		this.SendError(fmt.Sprintf("Could not parse message: [%s]", raw));
-		return;
+		this.SendError(fmt.Sprintf("Could not parse message: [%s]", raw))
+		return
 	}
 	handler := this.handleDefault
 	switch message.Type {
@@ -132,6 +132,8 @@ func (this *Client) HandleMessage(raw []byte) {
 			handler = this.handleInviteMessage
 		case "start":
 			handler = this.handleStartMessage
+		case "stop":
+			handler = this.handleStopMessage
 		case "state":
 			handler = this.handleStateMessage
 		case "action":
@@ -143,8 +145,8 @@ func (this *Client) HandleMessage(raw []byte) {
 func (this *Client) handleDefault(raw []byte) {
 	message, err := msg.ParseMessage(raw)
 	if err != nil {
-		this.SendError(fmt.Sprintf("Could not parse message: [%s]", raw));
-		return;
+		this.SendError(fmt.Sprintf("Could not parse message: [%s]", raw))
+		return
 	}
 
 	log.Warnf("No handler found for message type [%s]", message.Type)
@@ -154,8 +156,8 @@ func (this *Client) handleDefault(raw []byte) {
 func (this *Client) handleRegisterMessage(raw []byte) {
 	message, err := msg.ParseRegisterMessage(raw)
 	if err != nil {
-		this.SendError(fmt.Sprintf("Could not parse message: [%s]", raw));
-		return;
+		this.SendError(fmt.Sprintf("Could not parse message: [%s]", raw))
+		return
 	}
 
 	if !util.Includes(CLIENT_TYPES, message.ClientType) {
@@ -165,7 +167,7 @@ func (this *Client) handleRegisterMessage(raw []byte) {
 
 	defer GetLobby().TriggerUpdated()
 
-	this.Room.RemoveClient(this);
+	this.Room.RemoveClient(this)
 
 	this.Lock()
 	this.Type = message.ClientType
@@ -173,7 +175,7 @@ func (this *Client) handleRegisterMessage(raw []byte) {
 	this.isRegistered = false
 	this.Unlock()
 
-	err = this.Room.AddClient(this);
+	err = this.Room.AddClient(this)
 	if err != nil {
 		log.Warn("Could not register")
 		this.SendError(fmt.Sprintf("Could not register: [%s]", err))
@@ -192,8 +194,8 @@ func (this *Client) handleRegisterMessage(raw []byte) {
 func (this *Client) handleRoomMessage(raw []byte) {
 	message, err := msg.ParseRoomMessage(raw)
 	if err != nil {
-		this.SendError(fmt.Sprintf("Could not parse message: [%s]", raw));
-		return;
+		this.SendError(fmt.Sprintf("Could not parse message: [%s]", raw))
+		return
 	}
 
 	engine := GetLobby().GetClientById(message.Engine)
@@ -211,8 +213,8 @@ func (this *Client) handleRoomMessage(raw []byte) {
 func (this *Client) handleInviteMessage(raw []byte) {
 	message, err := msg.ParseInviteMessage(raw)
 	if err != nil {
-		this.SendError(fmt.Sprintf("Could not parse message: [%s]", raw));
-		return;
+		this.SendError(fmt.Sprintf("Could not parse message: [%s]", raw))
+		return
 	}
 
 	room := GetLobby().GetRoomById(message.Room)
@@ -238,21 +240,52 @@ func (this *Client) handleInviteMessage(raw []byte) {
 }
 
 func (this *Client) handleStartMessage(raw []byte) {
+	if this.Room.Started {
+		this.SendError(fmt.Sprintf("This game has already started"))
+		return
+	}
+
 	message, err := msg.ParseStartMessage(raw)
 	if err != nil {
-		this.SendError(fmt.Sprintf("Could not parse message: [%s]", raw));
-		return;
+		this.SendError(fmt.Sprintf("Could not parse message: [%s]", raw))
+		return
 	}
 
 	message.Players = this.Room.GetBotIds()
 	this.Room.SendMessageToEngine(message)
+	this.Room.Started = true
+	GetLobby().TriggerUpdated()
+}
+
+func (this *Client) handleStopMessage(raw []byte) {
+	if this.Type != TYPE_ENGINE {
+		// TODO uncomment once a proper engine is implemented
+		//this.SendError(fmt.Sprintf("You are not allowed to send a state message"))
+		//return
+	}
+	if !this.Room.Started {
+		this.SendError(fmt.Sprintf("This game has not started yet"))
+		return
+	}
+	if this.Room.Stopped {
+		this.SendError(fmt.Sprintf("This game has already stopped"))
+		return
+	}
+
+	this.Room.Stopped = true
+	GetLobby().TriggerUpdated()
 }
 
 func (this *Client) handleStateMessage(raw []byte) {
+	if this.Type != TYPE_ENGINE {
+		this.SendError(fmt.Sprintf("You are not allowed to send a state message"))
+		return
+	}
+
 	message, err := msg.ParseStateMessage(raw)
 	if err != nil {
-		this.SendError(fmt.Sprintf("Could not parse message: [%s]", raw));
-		return;
+		this.SendError(fmt.Sprintf("Could not parse message: [%s]", raw))
+		return
 	}
 	this.Room.Broadcast(this, message)
 }
@@ -260,8 +293,8 @@ func (this *Client) handleStateMessage(raw []byte) {
 func (this *Client) handleActionMessage(raw []byte) {
 	message, err := msg.ParseActionMessage(raw)
 	if err != nil {
-		this.SendError(fmt.Sprintf("Could not parse message: [%s]", raw));
-		return;
+		this.SendError(fmt.Sprintf("Could not parse message: [%s]", raw))
+		return
 	}
 	this.Room.SendMessageToEngine(message)
 }

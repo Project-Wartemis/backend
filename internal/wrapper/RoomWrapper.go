@@ -32,7 +32,7 @@ func (this *RoomWrapper) NewConnection(writer http.ResponseWriter, request *http
 		return
 	}
 
-	this.newConnection(room, writer, request);
+	this.newConnection(room, writer, request)
 }
 
 func (this *RoomWrapper) newConnection(room *base.Room, writer http.ResponseWriter, request *http.Request) {

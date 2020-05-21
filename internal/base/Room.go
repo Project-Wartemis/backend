@@ -16,6 +16,8 @@ type Room struct {
 	Id int                       `json:"id"`
 	Name string                  `json:"name"`
 	Clients map[string][]*Client `json:"clients"`
+	Started bool                 `json:"started"`
+	Stopped bool                 `json:"stopped"`
 	engine *Client
 	clientsById map[int]*Client
 }
@@ -25,6 +27,8 @@ func NewRoom(name string) *Room {
 		Id: ROOM_COUNTER.GetNext(),
 		Name: name,
 		Clients: map[string][]*Client{},
+		Started: false,
+		Stopped: false,
 		engine: nil,
 		clientsById: map[int]*Client{},
 	}
@@ -90,8 +94,8 @@ func (this *Room) RemoveClient(client *Client) {
 // not goroutine safe, expects caller to lock
 func (this *Room) removeClientFromList(client *Client, list []*Client) []*Client {
 	if client == nil {
-		log.Error("Detected nil client in removeClientFromList");
-		return list;
+		log.Error("Detected nil client in removeClientFromList")
+		return list
 	}
 	for i,c := range list {
 		if c.Id != client.Id {
