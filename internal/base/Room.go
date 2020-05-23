@@ -17,6 +17,7 @@ type Room struct {
 	Id int            `json:"id"`
 	Name string       `json:"name"`
 	Clients []*Client `json:"clients"`
+	History *History  `json:"-"`
 	Started bool      `json:"started"`
 	Stopped bool      `json:"stopped"`
 	isLobby bool
@@ -29,6 +30,7 @@ func NewRoom(name string, isLobby bool) *Room {
 		Id: ROOM_COUNTER.GetNext(),
 		Name: name,
 		Clients: []*Client{},
+		History: NewHistory(),
 		Started: false,
 		Stopped: false,
 		isLobby: isLobby,

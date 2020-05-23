@@ -19,6 +19,11 @@ type RegisteredMessage struct {
 	Id int `json:"id"`
 }
 
+type HistoryMessage struct {
+	Message
+	Messages []*StateMessage `json:"messages"`
+}
+
 func NewErrorMessage(content string) *ErrorMessage {
 	message := Message {
 		Type: "error",
@@ -55,5 +60,15 @@ func NewRegisteredMessage(id int) *RegisteredMessage {
 	return &RegisteredMessage {
 		Message: message,
 		Id: id,
+	}
+}
+
+func NewHistoryMessage(messages []*StateMessage) *HistoryMessage {
+	message := Message {
+		Type: "history",
+	}
+	return &HistoryMessage {
+		Message: message,
+		Messages: messages,
 	}
 }

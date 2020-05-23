@@ -145,6 +145,7 @@ func (this *Client) handleRegisterMessage(raw []byte) {
 	log.Infof("client [%s] registered on room [%s] as a [%s]", this.GetName(), this.GetRoom().GetName(), this.GetType())
 
 	this.SendMessage(msg.NewRegisteredMessage(this.Id))
+	this.GetRoom().History.SendAllToClient(this)
 }
 
 func (this *Client) handleRoomMessage(raw []byte) {
@@ -247,6 +248,8 @@ func (this *Client) handleStateMessage(raw []byte) {
 		this.SendError(fmt.Sprintf("Could not parse message: [%s]", raw))
 		return
 	}
+
+	this.GetRoom().History.Add(message)
 	this.GetRoom().Broadcast(this.GetId(), message)
 }
 

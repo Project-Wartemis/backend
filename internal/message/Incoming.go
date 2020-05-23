@@ -35,6 +35,7 @@ type StartMessage struct { // also outgoing
 
 type StateMessage struct { // also outgoing
 	Message
+	Turn int                         `json:"turn"`
 	Players []int                    `json:"players"`
 	State map[string]json.RawMessage `json:"state"`
 }
