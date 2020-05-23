@@ -196,6 +196,10 @@ func (this *Client) handleInviteMessage(raw []byte) {
 }
 
 func (this *Client) handleStartMessage(raw []byte) {
+	if this === GetLobby() {
+		this.SendError(fmt.Sprintf("You cannot start a game in the lobby..."))
+		return
+	}
 	if this.GetRoom().GetStarted() {
 		this.SendError(fmt.Sprintf("This game has already started"))
 		return
@@ -252,7 +256,7 @@ func (this *Client) handleActionMessage(raw []byte) {
 		this.SendError(fmt.Sprintf("Could not parse message: [%s]", raw))
 		return
 	}
-
+	message.Player = this.GetId()
 	this.GetRoom().BroadcastToType(TYPE_ENGINE, message)
 }
 

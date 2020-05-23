@@ -116,7 +116,7 @@ func (this *Room) AddClient(client *Client) error {
 	}
 
 	this.SetClientById(client.GetId(), client)
-	if client.GetType() == TYPE_ENGINE {
+	if client.GetType() == TYPE_ENGINE && this != GetLobby() {
 		this.setEngine(client)
 	}
 
