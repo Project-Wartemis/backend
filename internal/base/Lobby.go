@@ -19,7 +19,7 @@ var (
 )
 
 func initialiseLobby() {
-	room := NewRoom("lobby")
+	room := NewRoom("lobby", true)
 	lobby = &Lobby{
 		Room: *room,
 		Rooms: []*Room{},

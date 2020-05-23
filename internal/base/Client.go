@@ -160,7 +160,7 @@ func (this *Client) handleRoomMessage(raw []byte) {
 		return
 	}
 
-	room := NewRoom(message.Name)
+	room := NewRoom(message.Name, false)
 	GetLobby().AddRoom(room)
 	this.SendMessage(msg.NewInviteMessage(room.GetId(), room.GetName(), this.GetId()))
 	engine.SendMessage(msg.NewInviteMessage(room.GetId(), room.GetName(), engine.GetId()))
@@ -196,7 +196,7 @@ func (this *Client) handleInviteMessage(raw []byte) {
 }
 
 func (this *Client) handleStartMessage(raw []byte) {
-	if this === GetLobby() {
+	if this.GetRoom().GetIsLobby() {
 		this.SendError(fmt.Sprintf("You cannot start a game in the lobby..."))
 		return
 	}

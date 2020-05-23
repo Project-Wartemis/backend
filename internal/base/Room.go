@@ -19,17 +19,19 @@ type Room struct {
 	Clients []*Client `json:"clients"`
 	Started bool      `json:"started"`
 	Stopped bool      `json:"stopped"`
+	isLobby bool
 	engine *Client
 	clientsById map[int]*Client
 }
 
-func NewRoom(name string) *Room {
+func NewRoom(name string, isLobby bool) *Room {
 	return &Room {
 		Id: ROOM_COUNTER.GetNext(),
 		Name: name,
 		Clients: []*Client{},
 		Started: false,
 		Stopped: false,
+		isLobby: isLobby,
 		engine: nil,
 		clientsById: map[int]*Client{},
 	}
@@ -116,7 +118,7 @@ func (this *Room) AddClient(client *Client) error {
 	}
 
 	this.SetClientById(client.GetId(), client)
-	if client.GetType() == TYPE_ENGINE && this != GetLobby() {
+	if client.GetType() == TYPE_ENGINE && !this.GetIsLobby() {
 		this.setEngine(client)
 	}
 
@@ -177,6 +179,14 @@ func (this *Room) SetStopped(stopped bool) {
 	defer this.Unlock()
 	this.Stopped = stopped
 }
+
+func (this *Room) GetIsLobby() bool {
+	this.RLock()
+	defer this.RUnlock()
+	return this.Stopped
+}
+
+// SetIsLobby not implemented, it should not update
 
 func (this *Room) getEngine() *Client {
 	this.RLock()
