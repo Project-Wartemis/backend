@@ -142,13 +142,6 @@ func (this *Room) RemoveClient(client *Client) {
 	this.Lock()
 	defer this.Unlock()
 	for i,c := range this.Clients {
-		// TODO remove
-		if c == nil {
-			log.Warn("okay... weird")
-		}
-		if client == nil {
-			log.Warn("okay... weirder!")
-		}
 		if c.Id == client.Id {
 			this.Clients[i] = this.Clients[len(this.Clients)-1] // copy last element to index i
 			this.Clients[len(this.Clients)-1] = nil             // erase last element

@@ -84,20 +84,20 @@ func (this *Client) HandleMessage(raw []byte) {
 	}
 	handler := this.handleDefault
 	switch message.Type {
+		case "action":
+			handler = this.handleActionMessage
+		case "invite":
+			handler = this.handleInviteMessage
 		case "register":
 			handler = this.handleRegisterMessage
 		case "room":
 			handler = this.handleRoomMessage
-		case "invite":
-			handler = this.handleInviteMessage
 		case "start":
 			handler = this.handleStartMessage
-		case "stop":
-			handler = this.handleStopMessage
 		case "state":
 			handler = this.handleStateMessage
-		case "action":
-			handler = this.handleActionMessage
+		case "stop":
+			handler = this.handleStopMessage
 	}
 	handler(raw)
 }
@@ -113,7 +113,46 @@ func (this *Client) handleDefault(raw []byte) {
 	this.SendError(fmt.Sprintf("Invalid message type [%s]", message.Type))
 }
 
-// message handlers in alphabetical order TODO
+// message handlers in alphabetical order
+
+func (this *Client) handleActionMessage(raw []byte) {
+	message, err := msg.ParseActionMessage(raw)
+	if err != nil {
+		this.SendError(fmt.Sprintf("Could not parse message: [%s]", raw))
+		return
+	}
+	message.Player = this.GetId()
+	this.GetRoom().BroadcastToType(TYPE_ENGINE, message)
+}
+
+func (this *Client) handleInviteMessage(raw []byte) {
+	message, err := msg.ParseInviteMessage(raw)
+	if err != nil {
+		this.SendError(fmt.Sprintf("Could not parse message: [%s]", raw))
+		return
+	}
+
+	room := GetLobby().GetRoomById(message.Room)
+	if room == nil {
+		this.SendError(fmt.Sprintf("Could not find room with id [%d]", message.Room))
+		return
+	}
+	message.Name = room.Name
+
+	client := GetLobby().GetClientById(message.Client)
+	if client == nil {
+		this.SendError(fmt.Sprintf("Could not find player with id [%d]", message.Client))
+		return
+	}
+
+	found := room.GetClientById(client.GetId())
+	if found != nil {
+		this.SendError(fmt.Sprintf("Client with id [%d] is already present", message.Client))
+		return
+	}
+
+	client.SendMessage(message)
+}
 
 func (this *Client) handleRegisterMessage(raw []byte) {
 	message, err := msg.ParseRegisterMessage(raw)
@@ -129,9 +168,9 @@ func (this *Client) handleRegisterMessage(raw []byte) {
 
 	defer GetLobby().TriggerUpdated()
 
-	this.GetRoom().RemoveClient(this) // TODO
+	this.GetRoom().RemoveClient(this)
 
-	err = this.GetRoom().AddClient(this) // TODO
+	err = this.GetRoom().AddClient(this)
 	if err != nil {
 		log.Warnf("Could not register: [%s]", err)
 		this.SendError(fmt.Sprintf("Could not register: [%s]", err))
@@ -167,35 +206,6 @@ func (this *Client) handleRoomMessage(raw []byte) {
 	engine.SendMessage(msg.NewInviteMessage(room.GetId(), room.GetName(), engine.GetId()))
 }
 
-func (this *Client) handleInviteMessage(raw []byte) {
-	message, err := msg.ParseInviteMessage(raw)
-	if err != nil {
-		this.SendError(fmt.Sprintf("Could not parse message: [%s]", raw))
-		return
-	}
-
-	room := GetLobby().GetRoomById(message.Room)
-	if room == nil {
-		this.SendError(fmt.Sprintf("Could not find room with id [%d]", message.Room))
-		return
-	}
-	message.Name = room.Name
-
-	client := GetLobby().GetClientById(message.Client)
-	if client == nil {
-		this.SendError(fmt.Sprintf("Could not find player with id [%d]", message.Client))
-		return
-	}
-
-	found := room.GetClientById(client.GetId())
-	if found != nil {
-		this.SendError(fmt.Sprintf("Client with id [%d] is already present", message.Client))
-		return
-	}
-
-	client.SendMessage(message)
-}
-
 func (this *Client) handleStartMessage(raw []byte) {
 	if this.GetRoom().GetIsLobby() {
 		this.SendError(fmt.Sprintf("You cannot start a game in the lobby..."))
@@ -218,6 +228,22 @@ func (this *Client) handleStartMessage(raw []byte) {
 	GetLobby().TriggerUpdated()
 }
 
+func (this *Client) handleStateMessage(raw []byte) {
+	if this.GetType() != TYPE_ENGINE {
+		this.SendError(fmt.Sprintf("You are not allowed to send a state message"))
+		return
+	}
+
+	message, err := msg.ParseStateMessage(raw)
+	if err != nil {
+		this.SendError(fmt.Sprintf("Could not parse message: [%s]", raw))
+		return
+	}
+
+	this.GetRoom().History.Add(message)
+	this.GetRoom().Broadcast(this.GetId(), message)
+}
+
 func (this *Client) handleStopMessage(raw []byte) {
 	if this.GetType() != TYPE_ENGINE {
 		// TODO uncomment once a proper engine is implemented
@@ -235,32 +261,6 @@ func (this *Client) handleStopMessage(raw []byte) {
 
 	this.GetRoom().SetStopped(true)
 	GetLobby().TriggerUpdated()
-}
-
-func (this *Client) handleStateMessage(raw []byte) {
-	if this.GetType() != TYPE_ENGINE {
-		this.SendError(fmt.Sprintf("You are not allowed to send a state message"))
-		return
-	}
-
-	message, err := msg.ParseStateMessage(raw)
-	if err != nil {
-		this.SendError(fmt.Sprintf("Could not parse message: [%s]", raw))
-		return
-	}
-
-	this.GetRoom().History.Add(message)
-	this.GetRoom().Broadcast(this.GetId(), message)
-}
-
-func (this *Client) handleActionMessage(raw []byte) {
-	message, err := msg.ParseActionMessage(raw)
-	if err != nil {
-		this.SendError(fmt.Sprintf("Could not parse message: [%s]", raw))
-		return
-	}
-	message.Player = this.GetId()
-	this.GetRoom().BroadcastToType(TYPE_ENGINE, message)
 }
 
 
