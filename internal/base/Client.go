@@ -47,9 +47,13 @@ func NewClient(room *Room) *Client {
 
 func (this *Client) HandleDisconnect() {
 	this.SetConnection(nil)
-	if this.Type != TYPE_PLAYER {
-		this.Room.RemoveClient(this)
+	if this.GetType() == TYPE_PLAYER {
+		return // don't remove info for a player
 	}
+	if this.GetType() == TYPE_ENGINE && !this.GetRoom().GetIsLobby() {
+		return // don't remove info for an engine in a game
+	}
+	this.Room.RemoveClient(this)
 	GetLobby().TriggerUpdated()
 }
 

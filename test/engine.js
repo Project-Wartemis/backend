@@ -59,7 +59,7 @@ function handleConnectedMessage(connection, message) {
   sendMessage(connection, {
     type: 'register',
     clientType: 'engine',
-    name: 'Planet Wars'
+    name: 'Conquest'
   });
 }
 
@@ -79,10 +79,12 @@ function handleStartMessage(connection, message) {
     type: 'state',
     state
   });
+  let turn = 0;
   setInterval(() => {
     generate(state);
     sendMessage(connection, {
       type: 'state',
+      turn: turn++,
       state
     });
   }, 1000);

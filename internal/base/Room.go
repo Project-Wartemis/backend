@@ -197,7 +197,7 @@ func (this *Room) SetStopped(stopped bool) {
 func (this *Room) GetIsLobby() bool {
 	this.RLock()
 	defer this.RUnlock()
-	return this.Stopped
+	return this.isLobby
 }
 
 // SetIsLobby not implemented, it should not update
