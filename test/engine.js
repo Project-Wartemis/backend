@@ -77,17 +77,21 @@ function handleStartMessage(connection, message) {
   const state = generateInitial(message.players);
   sendMessage(connection, {
     type: 'state',
+    turn: 0,
     state
   });
   let turn = 0;
-  setInterval(() => {
+  while(turn < 200) {
     generate(state);
     sendMessage(connection, {
       type: 'state',
       turn: turn++,
       state
     });
-  }, 1000);
+  }
+  sendMessage(connection, {
+    type: 'stop'
+  });
 }
 
 start();
