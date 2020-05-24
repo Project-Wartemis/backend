@@ -48,6 +48,7 @@ function handleMessage(connection, message) {
     case 'registered': handleRegisteredMessage(connection, message); break;
     case 'invite': handleInviteMessage(connection, message); break;
     case 'state': handleStateMessage(connection, message); break;
+    case 'stop': handleStopMessage(connection, message); break;
   }
 }
 
@@ -72,21 +73,23 @@ function handleInviteMessage(connection, message) {
 
 function handleStateMessage(connection, message) {
   console.log(JSON.stringify(message));
-  setTimeout(() => {
-    const source = message.state.planets.find(p => p.player === connection.id);
-    const others = message.state.planets.filter(p => p.player !== connection.id);
-    const target = others[Math.floor(Math.random()*others.length)];
-    sendMessage(connection, {
-      type: 'action',
-      action: {
-        moves: [{
-          source: source.id,
-          target: target.id,
-          ships: 1,
-        }]
-      }
-    });
-  }, 50);
+  const source = message.state.planets.find(p => p.player === connection.id);
+  const others = message.state.planets.filter(p => p.player !== connection.id);
+  const target = others[Math.floor(Math.random()*others.length)];
+  sendMessage(connection, {
+    type: 'action',
+    action: {
+      moves: [{
+        source: source.id,
+        target: target.id,
+        ships: 1,
+      }]
+    }
+  });
+}
+
+function handleStopMessage(connection, message) {
+  connection.close();
 }
 
 start();
