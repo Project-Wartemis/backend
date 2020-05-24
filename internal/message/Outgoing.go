@@ -24,6 +24,11 @@ type HistoryMessage struct {
 	Messages []*StateMessage `json:"messages"`
 }
 
+type CreatedMessage struct {
+	Message
+	Room int `json:"room"`
+}
+
 func NewErrorMessage(content string) *ErrorMessage {
 	message := Message {
 		Type: "error",
@@ -70,5 +75,15 @@ func NewHistoryMessage(messages []*StateMessage) *HistoryMessage {
 	return &HistoryMessage {
 		Message: message,
 		Messages: messages,
+	}
+}
+
+func NewCreatedMessage(room int) *CreatedMessage {
+	message := Message {
+		Type: "created",
+	}
+	return &CreatedMessage {
+		Message: message,
+		Room: room,
 	}
 }

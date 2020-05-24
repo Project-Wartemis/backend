@@ -209,7 +209,7 @@ func (this *Client) handleRoomMessage(raw []byte) {
 
 	room := NewRoom(message.Name, false)
 	GetLobby().AddRoom(room)
-	this.SendMessage(msg.NewInviteMessage(room.GetId(), room.GetName(), this.GetId()))
+	this.SendMessage(msg.NewCreatedMessage(room.GetId()))
 	engine.SendMessage(msg.NewInviteMessage(room.GetId(), room.GetName(), engine.GetId()))
 }
 
