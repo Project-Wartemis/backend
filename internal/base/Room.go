@@ -102,6 +102,18 @@ func (this *Room) SetName(name string) {
 	this.Name = name
 }
 
+func (this *Room) GetClientsByType(Type string) []*Client {
+	this.RLock()
+	defer this.RUnlock()
+	result := []*Client{}
+	for _,client := range this.clientsById {
+		if client.Type == Type {
+			result = append(result, client)
+		}
+	}
+	return result
+}
+
 func (this *Room) GetClientIdsByType(Type string) []int {
 	this.RLock()
 	defer this.RUnlock()
@@ -112,6 +124,13 @@ func (this *Room) GetClientIdsByType(Type string) []int {
 		}
 	}
 	return result
+}
+
+func (this *Room) TransformClientTypes(from string, to string) {
+	clients := this.GetClientsByType(from)
+	for _,client := range clients {
+		client.SetType(to)
+	}
 }
 
 func (this *Room) AddClient(client *Client) error {

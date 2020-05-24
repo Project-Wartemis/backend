@@ -10,13 +10,14 @@ import (
 )
 
 const (
-	TYPE_VIEWER = "viewer"
 	TYPE_BOT    = "bot"
 	TYPE_ENGINE = "engine"
+	TYPE_PLAYER = "player"
+	TYPE_VIEWER = "viewer"
 )
 
 var (
-	CLIENT_TYPES = []string{TYPE_VIEWER, TYPE_BOT, TYPE_ENGINE}
+	CLIENT_TYPES = []string{TYPE_BOT, TYPE_ENGINE, TYPE_PLAYER, TYPE_VIEWER}
 	CLIENT_COUNTER util.SafeCounter
 )
 
@@ -46,7 +47,9 @@ func NewClient(room *Room) *Client {
 
 func (this *Client) HandleDisconnect() {
 	this.SetConnection(nil)
-	this.Room.RemoveClient(this)
+	if this.Type != TYPE_PLAYER {
+		this.Room.RemoveClient(this)
+	}
 	GetLobby().TriggerUpdated()
 }
 
@@ -222,7 +225,8 @@ func (this *Client) handleStartMessage(raw []byte) {
 		return
 	}
 
-	message.Players = this.GetRoom().GetClientIdsByType(TYPE_BOT)
+	this.GetRoom().TransformClientTypes(TYPE_BOT, TYPE_PLAYER)
+	message.Players = this.GetRoom().GetClientIdsByType(TYPE_PLAYER)
 	this.GetRoom().BroadcastToType(TYPE_ENGINE, message)
 	this.GetRoom().SetStarted(true)
 	GetLobby().TriggerUpdated()
