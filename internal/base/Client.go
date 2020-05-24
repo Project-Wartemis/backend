@@ -27,6 +27,7 @@ type Client struct {
 	Room *Room  `json:"-"`
 	Type string `json:"type"`
 	Name string `json:"name"`
+	Game string `json:"game"`
 	registered bool
 	connection *Connection
 }
@@ -152,6 +153,12 @@ func (this *Client) handleInviteMessage(raw []byte, base *msg.Message) {
 		return
 	}
 
+	engine := room.GetEngine()
+	if engine != nil && client.GetType() == TYPE_BOT && engine.GetName() != client.GetName() {
+		this.SendError(fmt.Sprintf("Bot [%s] is not made for [%s], but for [%s]", client.GetName(), engine.GetName(), client.GetGame()))
+		return
+	}
+
 	found := room.GetClientById(client.GetId())
 	if found != nil {
 		this.SendError(fmt.Sprintf("Client with id [%d] is already present", message.Client))
@@ -186,6 +193,7 @@ func (this *Client) handleRegisterMessage(raw []byte, base *msg.Message) {
 
 	this.SetType(message.ClientType)
 	this.SetName(message.Name)
+	this.SetGame(message.Game)
 	this.setRegistered(true)
 
 	log.Infof("client [%s] registered on room [%s] as a [%s]", this.GetName(), this.GetRoom().GetName(), this.GetType())
@@ -317,6 +325,18 @@ func (this *Client) SetName(name string) {
 	this.Lock()
 	defer this.Unlock()
 	this.Name = name
+}
+
+func (this *Client) GetGame() string {
+	this.RLock()
+	defer this.RUnlock()
+	return this.Game
+}
+
+func (this *Client) SetGame(game string) {
+	this.Lock()
+	defer this.Unlock()
+	this.Game = game
 }
 
 func (this *Client) getRegistered() bool {

@@ -134,7 +134,7 @@ func (this *Room) TransformClientTypes(from string, to string) {
 }
 
 func (this *Room) AddClient(client *Client) error {
-	if client.GetType() == TYPE_ENGINE && this.getEngine() != nil {
+	if client.GetType() == TYPE_ENGINE && this.GetEngine() != nil {
 		return errors.New("engine already registered on this room")
 	}
 
@@ -202,7 +202,7 @@ func (this *Room) GetIsLobby() bool {
 
 // SetIsLobby not implemented, it should not update
 
-func (this *Room) getEngine() *Client {
+func (this *Room) GetEngine() *Client {
 	this.RLock()
 	defer this.RUnlock()
 	return this.engine

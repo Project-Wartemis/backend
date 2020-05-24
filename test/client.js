@@ -56,7 +56,8 @@ function handleConnectedMessage(connection, message) {
   sendMessage(connection, {
     type: 'register',
     clientType: 'bot',
-    name: 'Robbot'
+    name: 'Robbot',
+    game: 'Conquest'
   });
 }
 

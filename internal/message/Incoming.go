@@ -13,6 +13,7 @@ type RegisterMessage struct {
 	Message
 	ClientType string
 	Name string
+	Game string
 }
 
 type RoomMessage struct {
