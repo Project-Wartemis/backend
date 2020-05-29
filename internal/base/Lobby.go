@@ -2,39 +2,57 @@ package base
 
 import (
 	"encoding/json"
-	"sync"
 	log "github.com/sirupsen/logrus"
 	"github.com/Project-Wartemis/pw-backend/internal/message"
 )
 
 type Lobby struct {
 	Room
-	Rooms []*Room `json:"rooms"`
-	roomsById map[int]*Room
+	Games []*Game `json:"games"`
+	gamesById map[int]*Game
 }
 
-var (
-	lobby *Lobby
-	once sync.Once
-)
-
-func initialiseLobby() {
-	room := NewRoom("lobby", true)
-	lobby = &Lobby{
+func NewLobby() *Lobby {
+	room := NewRoom("lobby")
+	return &Lobby {
 		Room: *room,
-		Rooms: []*Room{},
-		roomsById: map[int]*Room{},
+		Games: []*Game{},
+		gamesById: map[int]*Game{},
 	}
 }
 
-func GetLobby() *Lobby {
-	once.Do(initialiseLobby)
-	return lobby
+func (this *Lobby) HandleConnect(connection *Connection) *Client {
+	client := NewClient(this, connection)
+	this.AddClient(client)
+	log.Info("Added a new client")
+	client.SendMessage(message.NewConnectedMessage())
+	return client
+}
+
+func (this *Lobby) HandleDisconnect(client *Client) {
+	client.SetConnection(nil)
+	if client.GetType() == TYPE_VIEWER {
+		this.RemoveClient(client)
+		this.RLock()
+		for _,game := range this.Games {
+			game.RemoveClient(client)
+		}
+		this.RUnlock()
+	}
 }
 
 
 
-// basic communication related stuff
+// communication related stuff
+
+func (this *Lobby) SendMessage(clientId int, message interface{}) {
+	client := this.GetClientById(clientId)
+	if client == nil {
+		log.Warnf("Tried sending a message to client [%d], but not found in [%s]", clientId, this.GetName())
+		return
+	}
+	client.SendMessage(message)
+}
 
 func (this *Lobby) TriggerUpdated() {
 	this.BroadcastToType(TYPE_VIEWER, message.NewLobbyMessage(this))
@@ -44,50 +62,52 @@ func (this *Lobby) TriggerUpdated() {
 
 // getters and setters
 
-func (this *Lobby) AddRoom(room *Room) {
-	this.SetRoomById(room.GetId(), room)
+func (this *Lobby) AddGame(game *Game) {
+	log.Infof("Adding game [%s]", game.GetName())
+
+	this.setGameById(game.GetId(), game)
 
 	this.Lock()
 	defer this.Unlock()
-	this.Rooms = append(this.Rooms, room)
+	this.Games = append(this.Games, game)
 
 	go this.TriggerUpdated()
 }
 
-func (this *Lobby) RemoveRoom(room *Room) {
-	log.Infof("Removing room [%s] from [%s]", room.GetName(), this.GetName())
+func (this *Lobby) RemoveGame(game *Game) {
+	log.Infof("Removing game [%s]", game.GetName())
 
-	this.RemoveRoomById(room.GetId())
+	this.removeGameById(game.GetId())
 
 	this.Lock()
 	defer this.Unlock()
-	for i,r := range this.Rooms {
-		if r.Id == room.Id {
-			this.Rooms[i] = this.Rooms[len(this.Rooms)-1] // copy last element to index i
-			this.Rooms[len(this.Rooms)-1] = nil           // erase last element
-			this.Rooms = this.Rooms[:len(this.Rooms)-1]   // truncate slice
+	for i,r := range this.Games {
+		if r.Id == game.Id {
+			this.Games[i] = this.Games[len(this.Games)-1] // copy last element to index i
+			this.Games[len(this.Games)-1] = nil           // erase last element
+			this.Games = this.Games[:len(this.Games)-1]   // truncate slice
 		}
 	}
 
 	go this.TriggerUpdated()
 }
 
-func (this *Lobby) GetRoomById(id int) *Room {
+func (this *Lobby) GetGameById(id int) *Game {
 	this.RLock()
 	defer this.RUnlock()
-	return this.roomsById[id]
+	return this.gamesById[id]
 }
 
-func (this *Lobby) SetRoomById(id int, client *Room) {
+func (this *Lobby) setGameById(id int, game *Game) {
 	this.Lock()
 	defer this.Unlock()
-	this.roomsById[id] = client
+	this.gamesById[id] = game
 }
 
-func (this *Lobby) RemoveRoomById(id int) {
+func (this *Lobby) removeGameById(id int) {
 	this.Lock()
 	defer this.Unlock()
-	delete(this.roomsById, id)
+	delete(this.gamesById, id)
 }
 
 

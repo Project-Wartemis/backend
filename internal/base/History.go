@@ -8,12 +8,12 @@ import (
 
 type History struct {
 	sync.RWMutex
-	messages []*msg.StateMessage
+	messages []*msg.StateMessageOut
 }
 
 func NewHistory() *History {
 	return &History {
-		messages: []*msg.StateMessage{},
+		messages: []*msg.StateMessageOut{},
 	}
 }
 
@@ -56,12 +56,12 @@ func (this *History) SendTurnsToClient(client *Client, from int, to int) {
 
 // getters and setters
 
-func (this *History) Add(message *msg.StateMessage) {
+func (this *History) Add(message *msg.StateMessageOut) {
 	this.Lock()
 	defer this.Unlock()
 	if message.Turn >= cap(this.messages) {
 		newCapacity := max(message.Turn+1, 2*cap(this.messages)) // atleast double, and more if needed
-		newMessages := make([]*msg.StateMessage, len(this.messages), newCapacity)
+		newMessages := make([]*msg.StateMessageOut, len(this.messages), newCapacity)
 		copy(newMessages, this.messages)
 		this.messages = newMessages
 	}

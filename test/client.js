@@ -46,8 +46,6 @@ function handleMessage(connection, message) {
   switch(message.type) {
     case 'connected': handleConnectedMessage(connection, message); break;
     case 'registered': handleRegisteredMessage(connection, message); break;
-    case 'invite': handleInviteMessage(connection, message); break;
-    case 'stop': handleStopMessage(connection, message); break;
   }
 }
 
@@ -63,15 +61,6 @@ function handleConnectedMessage(connection, message) {
 
 function handleRegisteredMessage(connection, message) {
   console.log(`Registered with id ${message.id}!`);
-}
-
-function handleInviteMessage(connection, message) {
-  console.log(`invited to room ${message.room}!`);
-  setupNewSocket(URL + '/' + message.room);
-}
-
-function handleStopMessage(connection, message) {
-  connection.close();
 }
 
 start();

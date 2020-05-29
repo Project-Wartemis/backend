@@ -17,15 +17,16 @@ type Connection struct {
 	pinger *time.Ticker
 }
 
-func NewConnection(connection *websocket.Conn) *Connection {
-	return &Connection {
-		connection: connection,
+func NewConnection(conn *websocket.Conn) *Connection {
+	connection := &Connection {
+		connection: conn,
 	}
+	return connection
 }
 
 
 
-// basic communication related stuff
+// communication related stuff
 
 func (this *Connection) SendMessage(message interface{}) error {
 	text, err := json.Marshal(message)

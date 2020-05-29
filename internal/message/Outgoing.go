@@ -1,8 +1,21 @@
 package message
 
+import (
+	"encoding/json"
+)
+
+type ConnectedMessage struct {
+	Message
+}
+
+type CreatedMessage struct {
+	Message
+	Game int `json:"game"`
+}
+
 type ErrorMessage struct {
 	Message
-	Content string `json:"message"`
+	Content string `json:"content"`
 }
 
 type LobbyMessage struct {
@@ -10,23 +23,42 @@ type LobbyMessage struct {
 	Lobby interface{} `json:"lobby"`
 }
 
-type ConnectedMessage struct {
-	Message
-}
-
 type RegisteredMessage struct {
 	Message
 	Id int `json:"id"`
 }
 
-type HistoryMessage struct {
+type StateMessageOut struct {
 	Message
-	Messages []*StateMessage `json:"messages"`
+	Game int              `json:"game"`
+	Key string            `json:"key"`
+	Turn int              `json:"turn"`
+	Move bool             `json:"move"`
+	State json.RawMessage `json:"state"`
 }
 
-type CreatedMessage struct {
+type HistoryMessage struct {
 	Message
-	Room int `json:"room"`
+	Messages []*StateMessageOut `json:"messages"`
+}
+
+func NewConnectedMessage() *ConnectedMessage {
+	message := Message {
+		Type: "connected",
+	}
+	return &ConnectedMessage {
+		Message: message,
+	}
+}
+
+func NewCreatedMessage(game int) *CreatedMessage {
+	message := Message {
+		Type: "created",
+	}
+	return &CreatedMessage {
+		Message: message,
+		Game: game,
+	}
 }
 
 func NewErrorMessage(content string) *ErrorMessage {
@@ -49,15 +81,6 @@ func NewLobbyMessage(lobby interface{}) *LobbyMessage {
 	}
 }
 
-func NewConnectedMessage() *ConnectedMessage {
-	message := Message {
-		Type: "connected",
-	}
-	return &ConnectedMessage {
-		Message: message,
-	}
-}
-
 func NewRegisteredMessage(id int) *RegisteredMessage {
 	message := Message {
 		Type: "registered",
@@ -68,22 +91,26 @@ func NewRegisteredMessage(id int) *RegisteredMessage {
 	}
 }
 
-func NewHistoryMessage(messages []*StateMessage) *HistoryMessage {
+func NewStateMessageOut(game int, key string, turn int, move bool, state string) *StateMessageOut {
+	message := Message {
+		Type: "state",
+	}
+	return &StateMessageOut {
+		Message: message,
+		Game: game,
+		Key: key,
+		Turn: turn,
+		Move: move,
+		State: json.RawMessage(state),
+	}
+}
+
+func NewHistoryMessage(messages []*StateMessageOut) *HistoryMessage {
 	message := Message {
 		Type: "history",
 	}
 	return &HistoryMessage {
 		Message: message,
 		Messages: messages,
-	}
-}
-
-func NewCreatedMessage(room int) *CreatedMessage {
-	message := Message {
-		Type: "created",
-	}
-	return &CreatedMessage {
-		Message: message,
-		Room: room,
 	}
 }

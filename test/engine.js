@@ -49,7 +49,6 @@ function handleMessage(connection, message) {
   switch(message.type) {
     case 'connected': handleConnectedMessage(connection, message); break;
     case 'registered': handleRegisteredMessage(connection, message); break;
-    case 'invite': handleInviteMessage(connection, message); break;
     case 'start': handleStartMessage(connection, message); break;
   }
 }
@@ -67,11 +66,6 @@ function handleRegisteredMessage(connection, message) {
   console.log(`Registered with id ${message.id}!`);
 }
 
-function handleInviteMessage(connection, message) {
-  console.log(`invited to room ${message.room}!`);
-  setupNewSocket(URL + '/' + message.room);
-}
-
 function handleStartMessage(connection, message) {
   console.log(`start!`);
   const state = generateInitial(message.players);
@@ -81,16 +75,19 @@ function handleStartMessage(connection, message) {
     state
   });
   let turn = 0;
-  while(turn < 200) {
+  while(turn < 100) {
     generate(state);
     sendMessage(connection, {
       type: 'state',
+      game: message.game,
       turn: turn++,
+      players: [],
       state
     });
   }
   sendMessage(connection, {
-    type: 'stop'
+    type: 'stop',
+    game: message.game,
   });
 }
 

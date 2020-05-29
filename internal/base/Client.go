@@ -12,66 +12,59 @@ import (
 const (
 	TYPE_BOT    = "bot"
 	TYPE_ENGINE = "engine"
-	TYPE_PLAYER = "player"
 	TYPE_VIEWER = "viewer"
 )
 
 var (
-	CLIENT_TYPES = []string{TYPE_BOT, TYPE_ENGINE, TYPE_PLAYER, TYPE_VIEWER}
+	CLIENT_TYPES = []string{TYPE_BOT, TYPE_ENGINE, TYPE_VIEWER}
 	CLIENT_COUNTER util.SafeCounter
 )
 
 type Client struct {
 	sync.RWMutex
 	Id int      `json:"id"`
-	Room *Room  `json:"-"`
 	Type string `json:"type"`
 	Name string `json:"name"`
-	Game string `json:"game"`
-	registered bool
+	Game string `json:"game"` // used for bots to specify which game they want to play
+	lobby *Lobby
 	connection *Connection
 }
 
-func NewClient(room *Room) *Client {
-	return &Client {
+func NewClient(lobby *Lobby, connection *Connection) *Client {
+	client :=  &Client {
 		Id: CLIENT_COUNTER.GetNext(),
-		Room: room,
-		Type: "",
-		registered: false,
+		lobby: lobby,
 		connection: nil,
 	}
+	client.SetConnection(connection)
+	return client
+}
+
+func (this *Client) Merge(client *Client) {
+	this.getLobby().RemoveClient(client)
+	*client = *this
 }
 
 
 
-// basic communication related stuff
-
-func (this *Client) HandleDisconnect() {
-	this.SetConnection(nil)
-	if this.GetType() == TYPE_PLAYER {
-		return // don't remove info for a player
-	}
-	if this.GetType() == TYPE_ENGINE && !this.GetRoom().GetIsLobby() {
-		return // don't remove info for an engine in a game
-	}
-	this.Room.RemoveClient(this)
-	GetLobby().TriggerUpdated()
-}
+// communication related stuff
 
 func (this *Client) SendMessage(message interface{}) {
-	log.Debugf("Sending message to [%s]: [%s]", this.GetName(), message)
+	go func() {
+		log.Debugf("Sending message to [%s]: [%s]", this.GetName(), message)
 
-	connection := this.getConnection()
-	if connection == nil {
-		log.Warnf("Cannot send a message to [%s] because not connected", this.GetName())
-		return
-	}
+		connection := this.getConnection()
+		if connection == nil {
+			log.Warnf("Cannot send a message to [%s] because not connected", this.GetName())
+			return
+		}
 
-	err := connection.SendMessage(message)
-	if err != nil {
-		log.Errorf("Unexpected error while sending message to [%s] : [%s]", this.GetName(), err)
-		return
-	}
+		err := connection.SendMessage(message)
+		if err != nil {
+			log.Errorf("Unexpected error while sending message to [%s] : [%s]", this.GetName(), err)
+			return
+		}
+	}()
 }
 
 func (this *Client) SendError(message string) {
@@ -94,12 +87,16 @@ func (this *Client) HandleMessage(raw []byte) {
 	switch message.Type {
 		case "action":
 			handler = this.handleActionMessage
+		case "game":
+			handler = this.handleGameMessage
 		case "invite":
 			handler = this.handleInviteMessage
+		case "join":
+			handler = this.handleJoinMessage
+		case "leave":
+			handler = this.handleLeaveMessage
 		case "register":
 			handler = this.handleRegisterMessage
-		case "room":
-			handler = this.handleRoomMessage
 		case "start":
 			handler = this.handleStartMessage
 		case "state":
@@ -107,10 +104,10 @@ func (this *Client) HandleMessage(raw []byte) {
 		case "stop":
 			handler = this.handleStopMessage
 	}
-	handler(raw, message)
+	handler(raw)
 }
 
-func (this *Client) handleDefault(raw []byte, base *msg.Message) {
+func (this *Client) handleDefault(raw []byte) {
 	message, err := msg.ParseMessage(raw)
 	if err != nil {
 		this.SendError(fmt.Sprintf("Could not parse message: [%s]", raw))
@@ -123,52 +120,103 @@ func (this *Client) handleDefault(raw []byte, base *msg.Message) {
 
 // message handlers in alphabetical order
 
-func (this *Client) handleActionMessage(raw []byte, base *msg.Message) {
+func (this *Client) handleActionMessage(raw []byte) {
 	message, err := msg.ParseActionMessage(raw)
 	if err != nil {
 		this.SendError(fmt.Sprintf("Could not parse message: [%s]", raw))
 		return
 	}
-	message.Player = this.GetId()
-	this.GetRoom().BroadcastToType(TYPE_ENGINE, message)
+
+	game := this.getLobby().GetGameById(message.Game)
+	if game == nil {
+		this.SendError(fmt.Sprintf("game not found: [%d]", message.Game))
+		return
+	}
+
+	game.HandleActionMessage(message)
 }
 
-func (this *Client) handleInviteMessage(raw []byte, base *msg.Message) {
+func (this *Client) handleGameMessage(raw []byte) {
+	message, err := msg.ParseGameMessage(raw)
+	if err != nil {
+		this.SendError(fmt.Sprintf("Could not parse message: [%s]", raw))
+		return
+	}
+
+	engine := this.getLobby().GetClientById(message.Engine)
+	if engine == nil {
+		this.SendError(fmt.Sprintf("Could not find engine with id [%d]", message.Engine))
+		return
+	}
+
+	game := NewGame(message.Name, engine)
+	this.getLobby().AddGame(game)
+	this.SendMessage(msg.NewCreatedMessage(game.GetId()))
+}
+
+func (this *Client) handleInviteMessage(raw []byte) {
 	message, err := msg.ParseInviteMessage(raw)
 	if err != nil {
 		this.SendError(fmt.Sprintf("Could not parse message: [%s]", raw))
 		return
 	}
 
-	room := GetLobby().GetRoomById(message.Room)
-	if room == nil {
-		this.SendError(fmt.Sprintf("Could not find room with id [%d]", message.Room))
-		return
-	}
-	message.Name = room.Name
-
-	client := GetLobby().GetClientById(message.Client)
-	if client == nil {
-		this.SendError(fmt.Sprintf("Could not find player with id [%d]", message.Client))
+	game := this.getLobby().GetGameById(message.Game)
+	if game == nil {
+		this.SendError(fmt.Sprintf("Game [%d] not found", message.Game))
 		return
 	}
 
-	engine := room.GetEngine()
-	if engine != nil && client.GetType() == TYPE_BOT && engine.GetName() != client.GetName() {
-		this.SendError(fmt.Sprintf("Bot [%s] is not made for [%s], but for [%s]", client.GetName(), engine.GetName(), client.GetGame()))
+	bot := this.getLobby().GetClientById(message.Bot)
+	if bot == nil {
+		this.SendError(fmt.Sprintf("Bot [%d] not found", message.Bot))
+		return
+	}
+	if bot.GetType() != TYPE_BOT {
+		this.SendError(fmt.Sprintf("Client [%d] is not a bot", message.Bot))
 		return
 	}
 
-	found := room.GetClientById(client.GetId())
-	if found != nil {
-		this.SendError(fmt.Sprintf("Client with id [%d] is already present", message.Client))
-		return
-	}
-
-	client.SendMessage(message)
+	game.AddPlayer(bot)
+	this.getLobby().TriggerUpdated()
 }
 
-func (this *Client) handleRegisterMessage(raw []byte, base *msg.Message) {
+func (this *Client) handleJoinMessage(raw []byte) {
+	message, err := msg.ParseInviteMessage(raw)
+	if err != nil {
+		this.SendError(fmt.Sprintf("Could not parse message: [%s]", raw))
+		return
+	}
+
+	game := this.getLobby().GetGameById(message.Game)
+	if game == nil {
+		this.SendError(fmt.Sprintf("Game [%d] not found", message.Game))
+		return
+	}
+
+	game.AddClient(this)
+	game.GetHistory().SendAllToClient(this)
+	this.getLobby().TriggerUpdated()
+}
+
+func (this *Client) handleLeaveMessage(raw []byte) {
+	message, err := msg.ParseLeaveMessage(raw)
+	if err != nil {
+		this.SendError(fmt.Sprintf("Could not parse message: [%s]", raw))
+		return
+	}
+
+	game := this.getLobby().GetGameById(message.Game)
+	if game == nil {
+		this.SendError(fmt.Sprintf("Game [%d] not found", message.Game))
+		return
+	}
+
+	game.RemoveClient(this)
+	this.getLobby().TriggerUpdated()
+}
+
+func (this *Client) handleRegisterMessage(raw []byte) {
 	message, err := msg.ParseRegisterMessage(raw)
 	if err != nil {
 		this.SendError(fmt.Sprintf("Could not parse message: [%s]", raw))
@@ -180,71 +228,45 @@ func (this *Client) handleRegisterMessage(raw []byte, base *msg.Message) {
 		return
 	}
 
-	defer GetLobby().TriggerUpdated()
+	this.setType(message.ClientType)
+	this.setName(message.Name)
+	this.setGame(message.Game)
 
-	this.GetRoom().RemoveClient(this)
+	log.Infof("client [%s] registered as a [%s]", this.GetName(), this.GetType())
 
-	err = this.GetRoom().AddClient(this)
-	if err != nil {
-		log.Warnf("Could not register: [%s]", err)
-		this.SendError(fmt.Sprintf("Could not register: [%s]", err))
-		return
+	duplicate := this.getLobby().FindDuplicateUnconnectedClient(this)
+	if duplicate != nil {
+		log.Infof("Detected [%s] previously connected, merging", this.GetName())
+		this.Merge(duplicate)
 	}
-
-	this.SetType(message.ClientType)
-	this.SetName(message.Name)
-	this.SetGame(message.Game)
-	this.setRegistered(true)
-
-	log.Infof("client [%s] registered on room [%s] as a [%s]", this.GetName(), this.GetRoom().GetName(), this.GetType())
 
 	this.SendMessage(msg.NewRegisteredMessage(this.Id))
-	this.GetRoom().History.SendAllToClient(this)
+	this.getLobby().TriggerUpdated()
 }
 
-func (this *Client) handleRoomMessage(raw []byte, base *msg.Message) {
-	message, err := msg.ParseRoomMessage(raw)
-	if err != nil {
-		this.SendError(fmt.Sprintf("Could not parse message: [%s]", raw))
-		return
-	}
-
-	engine := GetLobby().GetClientById(message.Engine)
-	if engine == nil {
-		this.SendError(fmt.Sprintf("Could not find engine with id [%d]", message.Engine))
-		return
-	}
-
-	room := NewRoom(message.Name, false)
-	GetLobby().AddRoom(room)
-	this.SendMessage(msg.NewCreatedMessage(room.GetId()))
-	engine.SendMessage(msg.NewInviteMessage(room.GetId(), room.GetName(), engine.GetId()))
-}
-
-func (this *Client) handleStartMessage(raw []byte, base *msg.Message) {
-	if this.GetRoom().GetIsLobby() {
-		this.SendError(fmt.Sprintf("You cannot start a game in the lobby..."))
-		return
-	}
-	if this.GetRoom().GetStarted() {
-		this.SendError(fmt.Sprintf("This game has already started"))
-		return
-	}
-
+func (this *Client) handleStartMessage(raw []byte) {
 	message, err := msg.ParseStartMessage(raw)
 	if err != nil {
 		this.SendError(fmt.Sprintf("Could not parse message: [%s]", raw))
 		return
 	}
 
-	this.GetRoom().TransformClientTypes(TYPE_BOT, TYPE_PLAYER)
-	message.Players = this.GetRoom().GetClientIdsByType(TYPE_PLAYER)
-	this.GetRoom().BroadcastToType(TYPE_ENGINE, message)
-	this.GetRoom().SetStarted(true)
-	GetLobby().TriggerUpdated()
+	game := this.getLobby().GetGameById(message.Game)
+	if game == nil {
+		this.SendError(fmt.Sprintf("Game [%d] not found", message.Game))
+		return
+	}
+
+	err = game.Start()
+	if err != nil {
+		this.SendError(fmt.Sprintf("Could not start game [%d]: [%s]", message.Game, err))
+		return
+	}
+
+	this.getLobby().TriggerUpdated()
 }
 
-func (this *Client) handleStateMessage(raw []byte, base *msg.Message) {
+func (this *Client) handleStateMessage(raw []byte) {
 	if this.GetType() != TYPE_ENGINE {
 		this.SendError(fmt.Sprintf("You are not allowed to send a state message"))
 		return
@@ -252,31 +274,44 @@ func (this *Client) handleStateMessage(raw []byte, base *msg.Message) {
 
 	message, err := msg.ParseStateMessage(raw)
 	if err != nil {
-		this.SendError(fmt.Sprintf("Could not parse message: [%s]", raw))
+		this.SendError(fmt.Sprintf("Could not parse message : [%s] : [%s]", err, raw))
 		return
 	}
 
-	this.GetRoom().History.Add(message)
-	this.GetRoom().Broadcast(this.GetId(), message)
+	game := this.getLobby().GetGameById(message.Game)
+	if game == nil {
+		this.SendError(fmt.Sprintf("Game [%d] not found", message.Game))
+		return
+	}
+
+	game.HandleStateMessage(message)
 }
 
-func (this *Client) handleStopMessage(raw []byte, base *msg.Message) {
+func (this *Client) handleStopMessage(raw []byte) {
 	if this.GetType() != TYPE_ENGINE {
 		this.SendError(fmt.Sprintf("You are not allowed to send a stop message"))
 		return
 	}
-	if !this.GetRoom().GetStarted() {
-		this.SendError(fmt.Sprintf("This game has not started yet"))
-		return
-	}
-	if this.GetRoom().GetStopped() {
-		this.SendError(fmt.Sprintf("This game has already stopped"))
+
+	message, err := msg.ParseStopMessage(raw)
+	if err != nil {
+		this.SendError(fmt.Sprintf("Could not parse message: [%s]", raw))
 		return
 	}
 
-	this.GetRoom().SetStopped(true)
-	this.GetRoom().BroadcastToType(TYPE_PLAYER, base)
-	GetLobby().TriggerUpdated()
+	game := this.getLobby().GetGameById(message.Game)
+	if game == nil {
+		this.SendError(fmt.Sprintf("Game [%d] not found", message.Game))
+		return
+	}
+
+	err = game.Stop()
+	if err != nil {
+		this.SendError(fmt.Sprintf("Could not stop game [%d]: [%s]", message.Game, err))
+		return
+	}
+
+	this.getLobby().TriggerUpdated()
 }
 
 
@@ -289,27 +324,13 @@ func (this *Client) GetId() int {
 	return this.Id
 }
 
-func (this *Client) SetId(id int) {
-	this.Lock()
-	defer this.Unlock()
-	this.Id = id
-}
-
-func (this *Client) GetRoom() *Room {
-	this.RLock()
-	defer this.RUnlock()
-	return this.Room
-}
-
-// SetRoom not implemented, it should not update
-
 func (this *Client) GetType() string {
 	this.RLock()
 	defer this.RUnlock()
 	return this.Type
 }
 
-func (this *Client) SetType(Type string) {
+func (this *Client) setType(Type string) {
 	this.Lock()
 	defer this.Unlock()
 	this.Type = Type
@@ -321,7 +342,7 @@ func (this *Client) GetName() string {
 	return this.Name
 }
 
-func (this *Client) SetName(name string) {
+func (this *Client) setName(name string) {
 	this.Lock()
 	defer this.Unlock()
 	this.Name = name
@@ -333,22 +354,16 @@ func (this *Client) GetGame() string {
 	return this.Game
 }
 
-func (this *Client) SetGame(game string) {
+func (this *Client) setGame(game string) {
 	this.Lock()
 	defer this.Unlock()
 	this.Game = game
 }
 
-func (this *Client) getRegistered() bool {
+func (this *Client) getLobby() *Lobby {
 	this.RLock()
 	defer this.RUnlock()
-	return this.registered
-}
-
-func (this *Client) setRegistered(registered bool) {
-	this.Lock()
-	defer this.Unlock()
-	this.registered = registered
+	return this.lobby
 }
 
 func (this *Client) getConnection() *Connection {
@@ -369,6 +384,12 @@ func (this *Client) SetConnection(connection *Connection) {
 	if connection != nil {
 		go connection.StartPinging()
 	}
+}
+
+func (this *Client) IsConnected() bool {
+	this.RLock()
+	defer this.RUnlock()
+	return this.connection != nil
 }
 
 

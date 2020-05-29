@@ -41,14 +41,11 @@ function handleMessage(connection, message) {
     console.log('Got a non-text message, ignoring');
   message = JSON.parse(message.utf8Data);
 
-  console.log(`Got a ${message.type} message!`);
-
   switch(message.type) {
     case 'connected': handleConnectedMessage(connection, message); break;
     case 'registered': handleRegisteredMessage(connection, message); break;
-    case 'invite': handleInviteMessage(connection, message); break;
     case 'state': handleStateMessage(connection, message); break;
-    case 'stop': handleStopMessage(connection, message); break;
+    case 'error': handleErrorMessage(connection, message); break;
   }
 }
 
@@ -63,34 +60,36 @@ function handleConnectedMessage(connection, message) {
 }
 
 function handleRegisteredMessage(connection, message) {
-  console.log(`Registered with id ${message.id}!`);
-  connection.id = message.id;
-}
-
-function handleInviteMessage(connection, message) {
-  console.log(`invited to room ${message.room}!`);
-  setupNewSocket(URL + '/' + message.room);
+  console.log(`Registered!`);
 }
 
 function handleStateMessage(connection, message) {
-  console.log(JSON.stringify(message));
-  const source = message.state.planets.find(p => p.player === connection.id);
-  const others = message.state.planets.filter(p => p.player !== connection.id);
+  if(!message.move) {
+    return;
+  }
+  const source = message.state.planets.find(p => p.player === 1);
+  const others = message.state.planets.filter(p => p.player !== 1);
   const target = others[Math.floor(Math.random()*others.length)];
+  const moves = [];
+  if(source && target) {
+    moves[0] = {
+      source: source.id,
+      target: target.id,
+      ships: source.ships,
+    };
+  }
   sendMessage(connection, {
     type: 'action',
+    game: message.game,
+    key: message.key,
     action: {
-      moves: [{
-        source: source.id,
-        target: target.id,
-        ships: 1,
-      }]
+      moves: moves
     }
   });
 }
 
-function handleStopMessage(connection, message) {
-  connection.close();
+function handleErrorMessage(connection, message) {
+  console.log(JSON.stringify(message));
 }
 
 start();

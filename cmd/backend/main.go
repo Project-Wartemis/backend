@@ -3,8 +3,9 @@ package main
 import (
 	"os"
 	log "github.com/sirupsen/logrus"
+	"github.com/Project-Wartemis/pw-backend/internal/base"
 	"github.com/Project-Wartemis/pw-backend/internal/master"
-	"github.com/Project-Wartemis/pw-backend/internal/wrapper"
+	"github.com/Project-Wartemis/pw-backend/internal/http"
 )
 
 func main() {
@@ -14,11 +15,12 @@ func main() {
 
 	log.Info("Execute main")
 
-	roomWrapper := wrapper.NewRoomWrapper()
-	lobbyWrapper := wrapper.NewLobbyWrapper(roomWrapper)
+	lobby := base.NewLobby()
+
+	lobbyHttpInterface := http.NewLobbyHttpInterface(lobby)
 
 	router := master.NewRouter()
-	router.Initialise(lobbyWrapper, roomWrapper)
+	router.Initialise(lobbyHttpInterface)
 
 	router.Start(PORT)
 }

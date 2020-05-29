@@ -9,6 +9,36 @@ type Message struct {
 	Type string `json:"type"`
 }
 
+type ActionMessage struct { // also outgoing
+	Message
+	Game int               `json:"game"`
+	Key string             `json:"key"` // incoming only
+	Player string          `json:"player"` // outgoing only
+	Action json.RawMessage `json:"action"`
+}
+
+type GameMessage struct {
+	Message
+	Name string
+	Engine int
+}
+
+type InviteMessage struct {
+	Message
+	Game int
+	Bot int
+}
+
+type JoinMessage struct {
+	Message
+	Game int
+}
+
+type LeaveMessage struct {
+	Message
+	Game int
+}
+
 type RegisterMessage struct {
 	Message
 	ClientType string
@@ -16,47 +46,25 @@ type RegisterMessage struct {
 	Game string
 }
 
-type RoomMessage struct {
-	Message
-	Name string
-	Engine int
-}
-
-type InviteMessage struct { // also outgoing
-	Message
-	Client int  `json:"client"`
-	Room int    `json:"room"`
-	Name string `json:"name"`
-}
-
 type StartMessage struct { // also outgoing
 	Message
-	Players []int `json:"players"`
+	Game int      `json:"game"`
+	Players []int `json:"players"` // outgoing only
+	Prefix string `json:"prefix"` // outgoing only
+	Suffix string `json:"suffix"` // outgoing only
 }
 
-type StateMessage struct { // also outgoing
+type StateMessage struct {
 	Message
-	Turn int                         `json:"turn"`
-	Players []int                    `json:"players"`
-	State map[string]json.RawMessage `json:"state"`
+	Game int
+	Turn int
+	Players []string
+	State json.RawMessage
 }
 
-type ActionMessage struct { // also outgoing
+type StopMessage struct { // also outgoing
 	Message
-	Player int                        `json:"player"`
-	Action map[string]json.RawMessage `json:"action"`
-}
-
-func NewInviteMessage(room int, name string, client int) *InviteMessage {
-	message := Message {
-		Type: "invite",
-	}
-	return &InviteMessage {
-		Message: message,
-		Client: client,
-		Room: room,
-		Name: name,
-	}
+	Game int `json:"game"`
 }
 
 func ParseMessage(raw []byte) (*Message, error) {
@@ -69,21 +77,21 @@ func ParseMessage(raw []byte) (*Message, error) {
 	return message, nil
 }
 
-func ParseRegisterMessage(raw []byte) (*RegisterMessage, error) {
-	message := &RegisterMessage{}
+func ParseActionMessage(raw []byte) (*ActionMessage, error) {
+	message := &ActionMessage{}
 	err := json.Unmarshal(raw, message)
 	if err != nil {
-		log.Warnf("Could not parse RegisterMessage [%s]", raw)
+		log.Warnf("Could not parse ActionMessage [%s]", raw)
 		return nil, err
 	}
 	return message, nil
 }
 
-func ParseRoomMessage(raw []byte) (*RoomMessage, error) {
-	message := &RoomMessage{}
+func ParseGameMessage(raw []byte) (*GameMessage, error) {
+	message := &GameMessage{}
 	err := json.Unmarshal(raw, message)
 	if err != nil {
-		log.Warnf("Could not parse RoomMessage [%s]", raw)
+		log.Warnf("Could not parse GameMessage [%s]", raw)
 		return nil, err
 	}
 	return message, nil
@@ -99,6 +107,36 @@ func ParseInviteMessage(raw []byte) (*InviteMessage, error) {
 	return message, nil
 }
 
+func ParseJoinMessage(raw []byte) (*JoinMessage, error) {
+	message := &JoinMessage{}
+	err := json.Unmarshal(raw, message)
+	if err != nil {
+		log.Warnf("Could not parse JoinMessage [%s]", raw)
+		return nil, err
+	}
+	return message, nil
+}
+
+func ParseLeaveMessage(raw []byte) (*LeaveMessage, error) {
+	message := &LeaveMessage{}
+	err := json.Unmarshal(raw, message)
+	if err != nil {
+		log.Warnf("Could not parse LeaveMessage [%s]", raw)
+		return nil, err
+	}
+	return message, nil
+}
+
+func ParseRegisterMessage(raw []byte) (*RegisterMessage, error) {
+	message := &RegisterMessage{}
+	err := json.Unmarshal(raw, message)
+	if err != nil {
+		log.Warnf("Could not parse RegisterMessage [%s]", raw)
+		return nil, err
+	}
+	return message, nil
+}
+
 func ParseStartMessage(raw []byte) (*StartMessage, error) {
 	message := &StartMessage{}
 	err := json.Unmarshal(raw, message)
@@ -107,6 +145,19 @@ func ParseStartMessage(raw []byte) (*StartMessage, error) {
 		return nil, err
 	}
 	return message, nil
+}
+
+func NewStartMessage(game int, players []int, prefix string, suffix string) *StartMessage {
+	message := Message {
+		Type: "start",
+	}
+	return &StartMessage {
+		Message: message,
+		Game: game,
+		Players: players,
+		Prefix: prefix,
+		Suffix: suffix,
+	}
 }
 
 func ParseStateMessage(raw []byte) (*StateMessage, error) {
@@ -119,12 +170,22 @@ func ParseStateMessage(raw []byte) (*StateMessage, error) {
 	return message, nil
 }
 
-func ParseActionMessage(raw []byte) (*ActionMessage, error) {
-	message := &ActionMessage{}
+func ParseStopMessage(raw []byte) (*StopMessage, error) {
+	message := &StopMessage{}
 	err := json.Unmarshal(raw, message)
 	if err != nil {
-		log.Warnf("Could not parse ActionMessage [%s]", raw)
+		log.Warnf("Could not parse StopMessage [%s]", raw)
 		return nil, err
 	}
 	return message, nil
+}
+
+func NewStopMessage(game int) *StopMessage {
+	message := Message {
+		Type: "stop",
+	}
+	return &StopMessage {
+		Message: message,
+		Game: game,
+	}
 }

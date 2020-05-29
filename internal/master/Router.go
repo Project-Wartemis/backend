@@ -6,7 +6,7 @@ import (
 	"net/http"
 	log "github.com/sirupsen/logrus"
 	"github.com/gorilla/mux"
-	"github.com/Project-Wartemis/pw-backend/internal/wrapper"
+	http2 "github.com/Project-Wartemis/pw-backend/internal/http"
 )
 
 type Router struct {
@@ -30,11 +30,9 @@ func (this *Router) Start(port int) {
 	}
 }
 
-func (this *Router) Initialise(lobbyWrapper *wrapper.LobbyWrapper, roomWrapper *wrapper.RoomWrapper) {
-	this.router.HandleFunc("/lobby",         lobbyWrapper.GetLobby).Methods("GET")
-	this.router.HandleFunc("/socket/{room}", roomWrapper.NewConnection)
-	this.router.HandleFunc("/socket",        lobbyWrapper.NewConnection)
-	this.router.HandleFunc("/*",             NotFoundHandler)
+func (this *Router) Initialise(LobbyInterface *http2.LobbyHttpInterface) {
+	this.router.HandleFunc("/socket", LobbyInterface.HandleNewConnection)
+	this.router.HandleFunc("/*",      NotFoundHandler)
 }
 
 func NotFoundHandler(writer http.ResponseWriter, request *http.Request) {
