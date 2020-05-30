@@ -60,7 +60,7 @@ function handleConnectedMessage(connection, message) {
 }
 
 function handleRegisteredMessage(connection, message) {
-  console.log(`Registered!`);
+  console.log(`Registered with id ${message.id}`);
 }
 
 function handleStateMessage(connection, message) {

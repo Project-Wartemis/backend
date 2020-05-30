@@ -13,6 +13,7 @@ import (
 type Connection struct {
 	sync.RWMutex
 	sendLock sync.Mutex // we cannot send two messages concurrently
+	client *Client
 	connection *websocket.Conn
 	pinger *time.Ticker
 }
@@ -72,9 +73,33 @@ func (this *Connection) StopPinging() {
 	}
 }
 
+func (this *Connection) HandleMessage(raw []byte) {
+	this.getClient().HandleMessage(raw)
+}
+
+func (this *Connection) HandleDisconnect() {
+	client := this.getClient()
+	if client == nil {
+		return
+	}
+	client.HandleDisconnect()
+}
+
 
 
 // getters and setters
+
+func (this *Connection) getClient() *Client {
+	this.RLock()
+	defer this.RUnlock()
+	return this.client
+}
+
+func (this *Connection) SetClient(client *Client) {
+	this.Lock()
+	defer this.Unlock()
+	this.client = client
+}
 
 func (this *Connection) getConnection() *websocket.Conn {
 	this.RLock()

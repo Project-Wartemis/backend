@@ -21,16 +21,14 @@ func NewLobby() *Lobby {
 	}
 }
 
-func (this *Lobby) HandleConnect(connection *Connection) *Client {
+func (this *Lobby) HandleConnect(connection *Connection) {
 	client := NewClient(this, connection)
 	this.AddClient(client)
 	log.Info("Added a new client")
 	client.SendMessage(message.NewConnectedMessage())
-	return client
 }
 
 func (this *Lobby) HandleDisconnect(client *Client) {
-	client.SetConnection(nil)
 	if client.GetType() == TYPE_VIEWER {
 		this.RemoveClient(client)
 		this.RLock()
@@ -38,6 +36,17 @@ func (this *Lobby) HandleDisconnect(client *Client) {
 			game.RemoveClient(client)
 		}
 		this.RUnlock()
+	}
+}
+
+func (this *Lobby) HandleReconnect(new *Client, old *Client) {
+	log.Infof("Reconnecting [%s]", new.GetName())
+	old.Transfer(new)
+	this.RemoveClient(new)
+	this.RLock()
+	defer this.RUnlock()
+	for _,game := range this.Games {
+		game.HandleReconnect(old)
 	}
 }
 

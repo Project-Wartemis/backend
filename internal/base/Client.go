@@ -37,12 +37,8 @@ func NewClient(lobby *Lobby, connection *Connection) *Client {
 		connection: nil,
 	}
 	client.SetConnection(connection)
+	connection.SetClient(client)
 	return client
-}
-
-func (this *Client) Merge(client *Client) {
-	this.getLobby().RemoveClient(client)
-	*client = *this
 }
 
 
@@ -53,7 +49,7 @@ func (this *Client) SendMessage(message interface{}) {
 	go func() {
 		log.Debugf("Sending message to [%s]: [%s]", this.GetName(), message)
 
-		connection := this.getConnection()
+		connection := this.GetConnection()
 		if connection == nil {
 			log.Warnf("Cannot send a message to [%s] because not connected", this.GetName())
 			return
@@ -70,6 +66,11 @@ func (this *Client) SendMessage(message interface{}) {
 func (this *Client) SendError(message string) {
 	log.Infof("Sending error message to [%s]: [%s]", this.GetName(), message)
 	this.SendMessage(msg.NewErrorMessage(message))
+}
+
+func (this *Client) HandleDisconnect() {
+	this.SetConnection(nil)
+	this.getLobby().HandleDisconnect(this)
 }
 
 
@@ -195,7 +196,7 @@ func (this *Client) handleJoinMessage(raw []byte) {
 	}
 
 	game.AddClient(this)
-	game.GetHistory().SendAllToClient(this)
+	game.GetHistory().SendAllToViewer(this)
 	this.getLobby().TriggerUpdated()
 }
 
@@ -236,11 +237,11 @@ func (this *Client) handleRegisterMessage(raw []byte) {
 
 	duplicate := this.getLobby().FindDuplicateUnconnectedClient(this)
 	if duplicate != nil {
-		log.Infof("Detected [%s] previously connected, merging", this.GetName())
-		this.Merge(duplicate)
+		this.getLobby().HandleReconnect(this, duplicate)
+		this = duplicate
 	}
 
-	this.SendMessage(msg.NewRegisteredMessage(this.Id))
+	this.SendMessage(msg.NewRegisteredMessage(this.GetId()))
 	this.getLobby().TriggerUpdated()
 }
 
@@ -366,15 +367,15 @@ func (this *Client) getLobby() *Lobby {
 	return this.lobby
 }
 
-func (this *Client) getConnection() *Connection {
+func (this *Client) GetConnection() *Connection {
 	this.RLock()
 	defer this.RUnlock()
 	return this.connection
 }
 
 func (this *Client) SetConnection(connection *Connection) {
-	if this.getConnection() != nil {
-		this.getConnection().StopPinging()
+	if this.GetConnection() != nil {
+		this.GetConnection().StopPinging()
 	}
 
 	this.Lock()
@@ -384,6 +385,16 @@ func (this *Client) SetConnection(connection *Connection) {
 	if connection != nil {
 		go connection.StartPinging()
 	}
+}
+
+func (this *Client) Transfer(client *Client) {
+	this.setType(client.GetType())
+	this.setName(client.GetName())
+	this.setGame(client.GetGame())
+	connection := client.GetConnection()
+	client.SetConnection(nil)
+	this.SetConnection(connection)
+	connection.SetClient(this)
 }
 
 func (this *Client) IsConnected() bool {

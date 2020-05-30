@@ -20,6 +20,8 @@ var (
 	GAME_COUNTER util.SafeCounter
 )
 
+type stateConverter func(*msg.StateMessage) *msg.StateMessageOut
+
 type Game struct {
 	Room
 	Id int           `json:"id"`
@@ -71,29 +73,59 @@ func (this *Game) Stop() error {
 
 // communication related stuff
 
-func (this *Game) HandleStateMessage(message *msg.StateMessage) {
-	state := string(message.State)
-	this.RLock()
-	for _,player := range this.Players {
-		paddedPlayerId := this.getPaddedId(player.GetId())
-		move := !this.Stopped && util.Includes(message.Players, paddedPlayerId)
-		playerState := this.AdaptStateForKey(paddedPlayerId, state)
-		playerMessage := msg.NewStateMessageOut(message.Game, player.GetKey(), message.Turn, move, playerState)
-		player.GetClient().SendMessage(playerMessage)
+func (this *Game) HandleReconnect(client *Client) {
+	// resend the last history state
+	if client.GetType() != TYPE_BOT {
+		return // only to bots
 	}
-	this.RUnlock()
-	broadcastState := this.AdaptStateForKey(this.getPaddedId(-1), state)
-	broadcastMessage := msg.NewStateMessageOut(message.Game, "", message.Turn, false, broadcastState)
-	this.History.Add(broadcastMessage)
-	this.BroadcastToType(TYPE_VIEWER, broadcastMessage)
+	players := this.getPlayersByClient(client)
+	if len(players) == 0 {
+		return // not a player in this game
+	}
+
+	message := this.GetHistory().GetLatest()
+	if message == nil {
+		return // no history yet
+	}
+
+	for _,player := range players {
+		log.Debugf("Sending last state in game [%s] to [%s]", this.GetName(), client.GetName())
+		this.sendStateMessageToPlayer(player, message)
+	}
 }
 
-func (this *Game) AdaptStateForKey(paddedPlayerId string, state string) string {
-	re := regexp.MustCompile(regexp.QuoteMeta("\"" + paddedPlayerId + "\""))
-	state = re.ReplaceAllString(state, "1")
-	re = regexp.MustCompile(regexp.QuoteMeta("\"" + PLAYER_PREFIX) + "(\\d+)" + regexp.QuoteMeta(PLAYER_SUFFIX + "\""))
-	state = re.ReplaceAllString(state, "$1")
-	return state
+func (this *Game) HandleStateMessage(message *msg.StateMessage) {
+	for _,player := range this.Players {
+		this.sendStateMessageToPlayer(player, message)
+	}
+	broadcast := this.makeStateConverter(nil)(message)
+	this.BroadcastToType(TYPE_VIEWER, broadcast)
+	this.GetHistory().Add(message)
+	this.GetHistory().AddConverted(broadcast)
+}
+
+func (this *Game) makeStateConverter(player *Player) stateConverter {
+	paddedPlayerId := this.getPaddedId(-1)
+	playerKey := ""
+	if player != nil {
+		paddedPlayerId = this.getPaddedId(player.GetId())
+		playerKey = player.GetKey()
+	}
+	regex1 := regexp.MustCompile(regexp.QuoteMeta("\"" + paddedPlayerId + "\""))
+	regex2 := regexp.MustCompile(regexp.QuoteMeta("\"" + PLAYER_PREFIX) + "(\\d+)" + regexp.QuoteMeta(PLAYER_SUFFIX + "\""))
+
+	return func(message *msg.StateMessage) *msg.StateMessageOut {
+		state := string(message.State)
+		move := !this.GetStopped() && util.Includes(message.Players, paddedPlayerId)
+		state = regex1.ReplaceAllString(state, "1")
+		state = regex2.ReplaceAllString(state, "$1")
+		return msg.NewStateMessageOut(message.Game, playerKey, message.Turn, move, state)
+	}
+}
+
+func (this *Game) sendStateMessageToPlayer(player *Player, message *msg.StateMessage) {
+	outgoing := this.makeStateConverter(player)(message)
+	player.GetClient().SendMessage(outgoing)
 }
 
 func (this *Game) HandleActionMessage(message *msg.ActionMessage) {
@@ -188,6 +220,19 @@ func (this *Game) GetPlayerByKey(key string) *Player {
 	}
 	log.Errorf("Could not find player in game [%s] with key [%s]. This is unexpected", this.GetName(), key)
 	return nil
+}
+
+func (this *Game) getPlayersByClient(client *Client) []*Player {
+	result := []*Player{}
+	this.RLock()
+	defer this.RUnlock()
+	for _,player := range this.Players {
+		log.Infof("comparing [%p] to [%p]", player.GetClient(), client)
+		if player.GetClient() == client {
+			result = append(result, player)
+		}
+	}
+	return result
 }
 
 func (this *Game) GetHistory() *History {

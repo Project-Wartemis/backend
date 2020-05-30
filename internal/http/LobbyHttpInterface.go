@@ -35,8 +35,8 @@ func (this *LobbyHttpInterface) HandleNewConnection(writer http.ResponseWriter, 
 	defer conn.Close()
 
 	connection := base.NewConnection(conn)
-	client := this.getLobby().HandleConnect(connection)
-	defer this.getLobby().HandleDisconnect(client)
+	this.getLobby().HandleConnect(connection)
+	defer connection.HandleDisconnect()
 
 	for {
 		_, message, err := conn.ReadMessage()
@@ -44,7 +44,7 @@ func (this *LobbyHttpInterface) HandleNewConnection(writer http.ResponseWriter, 
 			log.Errorf("Unable to read message: %s", err)
 			return
 		}
-		client.HandleMessage(message)
+		connection.HandleMessage(message)
 	}
 }
 

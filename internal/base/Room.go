@@ -121,7 +121,7 @@ func (this *Room) removeClientById(id int) {
 type JRoom Room
 
 func (this *Room) MarshalJSON() ([]byte, error) {
-    this.RLock()
-    defer this.RUnlock()
-    return json.Marshal(JRoom(*this))
+	this.RLock()
+	defer this.RUnlock()
+	return json.Marshal(JRoom(*this))
 }
