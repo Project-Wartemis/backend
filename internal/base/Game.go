@@ -227,7 +227,6 @@ func (this *Game) getPlayersByClient(client *Client) []*Player {
 	this.RLock()
 	defer this.RUnlock()
 	for _,player := range this.Players {
-		log.Infof("comparing [%p] to [%p]", player.GetClient(), client)
 		if player.GetClient() == client {
 			result = append(result, player)
 		}
