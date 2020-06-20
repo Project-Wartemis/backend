@@ -15,7 +15,7 @@ type CreatedMessage struct {
 
 type ErrorMessage struct {
 	Message
-	Content string `json:"content"`
+	Error string `json:"message"`
 }
 
 type LobbyMessage struct {
@@ -61,13 +61,13 @@ func NewCreatedMessage(game int) *CreatedMessage {
 	}
 }
 
-func NewErrorMessage(content string) *ErrorMessage {
+func NewErrorMessage(error string) *ErrorMessage {
 	message := Message {
 		Type: "error",
 	}
 	return &ErrorMessage {
 		Message: message,
-		Content: content,
+		Error: error,
 	}
 }
 
