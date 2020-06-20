@@ -88,6 +88,9 @@ func (this *Room) FindDuplicateUnconnectedClient(client *Client) *Client {
 		if c.GetName() != client.GetName() {
 			continue
 		}
+		if c.GetGame() != client.GetGame() {
+			continue
+		}
 		if c.IsConnected() {
 			continue
 		}
