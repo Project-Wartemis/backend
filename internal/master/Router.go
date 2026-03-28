@@ -31,7 +31,7 @@ func (this *Router) Start(port int) {
 }
 
 func (this *Router) Initialise(LobbyInterface *http2.LobbyHttpInterface) {
-	this.router.HandleFunc("/socket", LobbyInterface.HandleNewConnection)
+	this.router.HandleFunc("/api/socket", LobbyInterface.HandleNewConnection)
 	this.router.HandleFunc("/*",      NotFoundHandler)
 }
 
