@@ -1,0 +1,8 @@
+.git
+.github
+test
+*.exe
+scripts
+README.md
+LICENSE
+nginx.conf
